@@ -1332,7 +1332,30 @@ function planCard(p){
     '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
       '<div style="min-width:0">' +
         '<b style="font-size:15px;font-weight:800;letter-spacing:-.02em;display:block">' + esc(p.label) + '</b>' +
-        '<span style="font-size:13px;color:var(--muted)">' + money(p.charge_total != null ? p.charge_total : p.amount) + (p.interval_unit === 'year' ? '/yr' : '/mo') + ' &middot; ' + method + '</span>' +
+        /* THE AMOUNT THEY WILL ACTUALLY BE CHARGED, on the card they actually
+           have. This used to show charge_total, which is priced without a
+           payment method and so left the 3% credit-card fee out — the dashboard
+           showed the real figure and this line showed one ~3% lower. */
+        '<span style="font-size:13px;color:var(--muted)">' +
+          money(p.billed_total != null ? p.billed_total : (p.charge_total != null ? p.charge_total : p.amount)) +
+          (p.interval_unit === 'year' ? '/yr' : '/mo') + ' &middot; ' + method + '</span>' +
+        /* And the arithmetic behind it, so a customer can reconcile the total
+           against the rate on their agreement instead of wondering. */
+        (p.price_breakdown && p.price_breakdown.length > 1
+          ? '<div style="margin-top:10px;background:var(--surface-2);border-radius:var(--r);padding:11px 13px">' +
+            p.price_breakdown.map(function(l){
+              return '<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;' +
+                'color:var(--ink-2);padding:2px 0"><span>' + esc(l.label) + '</span><span>' +
+                money(l.amount) + '</span></div>';
+            }).join('') +
+            '<div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:800;' +
+              'color:var(--ink);border-top:1px solid var(--line);margin-top:6px;padding-top:6px">' +
+              '<span>Charged ' + (p.interval_unit === 'year' ? 'each year' : 'each month') + '</span><span>' +
+              money(p.billed_total) + '</span></div>' +
+            (p.fee_note ? '<div style="font-size:11.5px;color:var(--muted);margin-top:7px;line-height:1.5">' +
+              esc(p.fee_note) + '</div>' : '') +
+            '</div>'
+          : '') +
       '</div><span class="tag ' + tone + '">' + esc(String(p.status || '').replace(/_/g,' ')) + '</span>' +
     '</div>' +
     /* A price or schedule change is waiting on their signature. Show BOTH
@@ -1341,7 +1364,7 @@ function planCard(p){
     (p.pending_agreement_id && p.pending_total != null
       ? '<div class="alert alert-info" style="margin:12px 0 0">' +
         '<b>Price change waiting for your signature.</b><br>' +
-        'Still billing ' + money(p.charge_total != null ? p.charge_total : p.amount) +
+        'Still billing ' + money(p.billed_total != null ? p.billed_total : (p.charge_total != null ? p.charge_total : p.amount)) +
         (p.interval_unit === 'year' ? '/yr' : '/mo') +
         ' &rarr; becomes ' + money(p.pending_total) +
         (p.interval_unit === 'year' ? '/yr' : '/mo') +

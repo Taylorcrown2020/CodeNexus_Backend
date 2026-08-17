@@ -5205,6 +5205,28 @@ module.exports = function initLifecycle({
 
         const days = (d) => (d ? Math.max(0, Math.ceil((new Date(d) - Date.now()) / 86400000)) : null);
 
+        // Price every plan against the method it will ACTUALLY be charged on,
+        // so the Billing screen can show the same figure as the dashboard. The
+        // credit-card surcharge depends on the card type, so this cannot be
+        // derived from the plan row alone.
+        const acctMethod = (await pool.query(
+            `SELECT pm.* FROM payment_methods pm
+               JOIN leads l ON l.default_payment_method_id = pm.id
+              WHERE l.id = $1 AND pm.status = 'active'`, [leadId]
+        ).catch(() => ({ rows: [] }))).rows[0] || null;
+
+        for (const p of maint) {
+            let method = acctMethod;
+            if (p.payment_method_id) {
+                const own = (await pool.query(
+                    `SELECT * FROM payment_methods WHERE id = $1 AND status = 'active'`,
+                    [p.payment_method_id]).catch(() => ({ rows: [] }))).rows[0];
+                if (own) method = own;
+            }
+            try { p.__price = pricing.priceFor(p, method); }
+            catch (e) { console.warn('[PLANS] pricing skipped:', e.message); }
+        }
+
         const plans = maint.map((p) => ({
             kind: 'maintenance',
             id: p.id,
@@ -5213,10 +5235,21 @@ module.exports = function initLifecycle({
             plan_type: p.plan_type,
             amount: Number(p.amount),
             // The true amount signed/invoiced/charged: base + domain
-            // maintenance fee (renewals) + sales tax. Priced without a payment
-            // method, so it excludes the credit-card surcharge — that is in
-            // fee_breakdown. Front ends should display this, not `amount`.
+            // maintenance fee (renewals) + sales tax. Priced WITHOUT a payment
+            // method, so it excludes the credit-card surcharge.
             charge_total: planChargeTotal(p),
+            // WHAT THEY WILL ACTUALLY BE CHARGED, on the method they actually
+            // have. charge_total alone was being displayed on the Billing
+            // screen, so a customer paying by credit card saw a figure ~3%
+            // below what left their account — the dashboard showed the real
+            // number and Billing did not, which is worse than either being
+            // wrong on its own.
+            billed_total: p.__price ? p.__price.total : planChargeTotal(p),
+            price_breakdown: p.__price ? p.__price.lines : null,
+            tax_amount: p.__price ? p.__price.tax : 0,
+            processing_fee: p.__price ? p.__price.fee : 0,
+            processing_fee_applies: p.__price ? p.__price.feeApplies : false,
+            fee_note: p.__price ? pricing.feeExplanation(p.__price) : null,
             // Full breakdown — base, domain fee, tax, and the credit-card
             // processing fee. Priced WITHOUT a method, so this is the fee-free
             // figure; the portal shows the credit total separately from the
@@ -6227,7 +6260,26 @@ module.exports = function initLifecycle({
             }
 
             const isSigned = !!plan.signed_at;
-            if (priceChanged && isSigned && !b.confirmResign) {
+
+            // ------------------------------------------------------------
+            // DECLARED HERE, BEFORE THE 409 BELOW USES THEM.
+            //
+            // These were declared further down while the 409 message already
+            // referenced dayChanged, so every save on a signed plan died with
+            // "Cannot access 'dayChanged' before initialization" — a temporal
+            // dead zone error, thrown before any response was sent. From the
+            // admin portal that looked like the Save button doing nothing.
+            //
+            // A change to the billing DAY changes the automatic payment
+            // authorization as much as a change to the amount does: "we will
+            // charge you on the 12th" is part of what the customer consented
+            // to. Both go through the amendment; neither applies until signed.
+            // ------------------------------------------------------------
+            const dayChanged = b.billing_day !== undefined && b.billing_day !== ''
+                && Number(b.billing_day) !== Number(plan.billing_day);
+            const amendPrice = (priceChanged || dayChanged) && isSigned;
+
+            if ((priceChanged || dayChanged) && isSigned && !b.confirmResign) {
                 return res.status(409).json({
                     success: false,
                     code: 'PRICE_NEEDS_RESIGN',
@@ -6257,13 +6309,6 @@ module.exports = function initLifecycle({
             // keeps billing what the customer agreed to until they sign the
             // amendment; the proposed figure waits in `pending_amount`.
             // On an unsigned plan there is nothing to amend, so it applies now.
-            // A change to the billing DAY changes the automatic payment
-            // authorization exactly as much as a change to the amount does —
-            // "we will charge you on the 12th" is part of what they consented
-            // to. Both go through the amendment; neither applies until signed.
-            const dayChanged = b.billing_day !== undefined && b.billing_day !== ''
-                && Number(b.billing_day) !== Number(plan.billing_day);
-            const amendPrice = (priceChanged || dayChanged) && isSigned;
             if (b.amount !== undefined && b.amount !== '' && !amendPrice) {
                 put('amount', Number(b.amount));
             }

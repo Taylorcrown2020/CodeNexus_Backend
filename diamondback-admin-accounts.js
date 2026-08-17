@@ -406,12 +406,18 @@ module.exports = function initAdminAccounts({
     // ======================================================================
     app.post('/api/admin/accounts/:leadId/welcome', authenticateToken, async (req, res) => {
         try {
+            // SELECT * — not a column list.
+            //
+            // This named portal_welcome_count, which arrives with migration
+            // 013. On a database without 013 the query threw and the route
+            // answered "Could not send the welcome email", which said nothing
+            // about the actual cause. Third time this pattern has bitten; it is
+            // now the same defensive shape as the account screen.
             const lead = (await pool.query(
-                `SELECT id, name, email, portal_kind,
-                        client_password IS NOT NULL AS has_login,
-                        COALESCE(portal_welcome_count,0) AS sent_count
-                   FROM leads WHERE id = $1`, [req.params.leadId])).rows[0];
+                'SELECT *, client_password IS NOT NULL AS has_login FROM leads WHERE id = $1',
+                [req.params.leadId])).rows[0];
             if (!lead) return res.status(404).json({ success: false, message: 'Customer not found.' });
+            const sentCount = Number(lead.portal_welcome_count || 0);
             if (!lead.email) {
                 return res.status(400).json({ success: false, message: 'That customer has no email address.' });
             }
@@ -419,12 +425,17 @@ module.exports = function initAdminAccounts({
             // A customer whose portal_kind is 'crm' cannot sign in to the
             // customer portal at all, so a welcome would send them to a login
             // that rejects them. Say so rather than sending it.
+            // portal_kind defaults to 'crm' for every account that existed
+            // before migration 001, so refusing outright blocked customers who
+            // are perfectly real and just never got promoted. Promote them here
+            // instead — sending a portal welcome IS the decision that they are
+            // a portal customer.
             if (lead.portal_kind === 'crm') {
-                return res.status(400).json({
-                    success: false,
-                    message: 'This account is set to CRM access only. Change it to Customer or Both '
-                           + 'before sending a portal welcome.',
-                });
+                await pool.query(
+                    `UPDATE leads SET portal_kind = 'both' WHERE id = $1`, [lead.id]
+                ).catch((e) => console.warn('[WELCOME] portal_kind not updated:', e.message));
+                console.log(`[WELCOME] lead ${lead.id} was CRM-only — promoted to 'both' `
+                          + 'so the portal login will accept them.');
             }
 
             const setUp = !lead.has_login;
@@ -457,11 +468,18 @@ module.exports = function initAdminAccounts({
             res.json({
                 success: true,
                 message: `Welcome email sent to ${lead.email}.`
-                       + (lead.sent_count ? ` (Sent ${lead.sent_count + 1} times in total.)` : ''),
+                       + (sentCount ? ` (Sent ${sentCount + 1} times in total.)` : ''),
             });
         } catch (e) {
-            console.error('[WELCOME]', e.message);
-            res.status(500).json({ success: false, message: 'Could not send the welcome email.' });
+            console.error('[WELCOME] lead', req.params.leadId, '-', e.code, e.message);
+            const col = /column "?([\w.]+)"? does not exist/i.exec(e.message || '');
+            res.status(500).json({
+                success: false,
+                message: col
+                    ? `The database is missing "${col[1]}" — run the migrations in migrations/ `
+                    + '(011, 012, 013, 014) against this database, then try again.'
+                    : `Could not send the welcome email: ${e.message}`,
+            });
         }
     });
 
@@ -500,6 +518,112 @@ module.exports = function initAdminAccounts({
         } catch (e) {
             console.error('[DEFAULT METHOD]', e.message);
             res.status(500).json({ success: false, message: 'Could not change the payment method.' });
+        }
+    });
+
+    // ======================================================================
+    // EDIT A CUSTOMER'S BILLING INFORMATION
+    //
+    // Name, email, phone, company and billing address. These are what appear
+    // on their invoices, receipts and agreements, so getting them wrong is
+    // visible to the customer and, for the address, matters for sales tax.
+    //
+    // Only columns that exist are written, so this works on any migration
+    // level rather than failing whole because one field is absent.
+    // ======================================================================
+    app.patch('/api/admin/accounts/:leadId/billing-info', authenticateToken, async (req, res) => {
+        try {
+            const b = req.body || {};
+            const lead = (await pool.query('SELECT * FROM leads WHERE id=$1', [req.params.leadId])).rows[0];
+            if (!lead) return res.status(404).json({ success: false, message: 'Customer not found.' });
+
+            const cols = new Set((await pool.query(
+                `SELECT column_name FROM information_schema.columns WHERE table_name='leads'`
+            )).rows.map((r) => r.column_name));
+
+            const sets = [];
+            const vals = [req.params.leadId];
+            const put = (col, val) => {
+                if (!cols.has(col)) return;
+                vals.push(val);
+                sets.push(`${col} = $${vals.length}`);   // note the $$ — see plan edit
+            };
+
+            const text = (v, max) => {
+                if (v === undefined) return undefined;
+                const t = String(v == null ? '' : v).trim();
+                return t ? t.slice(0, max) : null;
+            };
+
+            if (b.name !== undefined) {
+                const n = text(b.name, 255);
+                if (!n) {
+                    return res.status(400).json({ success: false, message: 'A name is required.' });
+                }
+                put('name', n);
+            }
+
+            if (b.email !== undefined) {
+                const e = text(b.email, 255);
+                // An invoice or a receipt with no valid address on it cannot be
+                // delivered, and the portal login IS the email — so a typo here
+                // locks the customer out of their own account.
+                if (!e || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'That email address does not look valid. It is also their portal '
+                               + 'login, so a typo would lock them out.',
+                    });
+                }
+                const clash = await pool.query(
+                    'SELECT id, name FROM leads WHERE LOWER(email)=LOWER($1) AND id <> $2',
+                    [e, req.params.leadId]);
+                if (clash.rows.length) {
+                    return res.status(409).json({
+                        success: false,
+                        message: `${clash.rows[0].name || 'Another customer'} already uses that email. `
+                               + 'Two accounts sharing one address breaks the portal login.',
+                    });
+                }
+                put('email', e);
+            }
+
+            if (b.phone   !== undefined) put('phone', text(b.phone, 40));
+            if (b.company !== undefined) put('company', text(b.company, 255));
+            if (b.address !== undefined) put('address', text(b.address, 500));
+            if (b.city    !== undefined) put('city', text(b.city, 120));
+            if (b.state   !== undefined) put('state', text(b.state, 60));
+            if (b.zip     !== undefined) put('zip', text(b.zip, 20));
+            if (b.notes   !== undefined) put('notes', text(b.notes, 2000));
+
+            if (b.portal_kind !== undefined
+                && ['crm', 'customer', 'both'].includes(b.portal_kind)) {
+                put('portal_kind', b.portal_kind);
+            }
+
+            if (!sets.length) {
+                return res.json({ success: true, message: 'Nothing to change.', lead });
+            }
+
+            const upd = (await pool.query(
+                `UPDATE leads SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, vals)).rows[0];
+            delete upd.client_password;
+
+            res.json({
+                success: true,
+                lead: upd,
+                message: 'Billing details updated. They show on the customer\'s next invoice, '
+                       + 'receipt and agreement, and in their portal.',
+            });
+        } catch (e) {
+            console.error('[BILLING INFO]', e.code, e.message);
+            const col = /column "?([\w.]+)"? does not exist/i.exec(e.message || '');
+            res.status(500).json({
+                success: false,
+                message: col
+                    ? `The database is missing "${col[1]}". Run the migrations in migrations/.`
+                    : `Could not save those details: ${e.message}`,
+            });
         }
     });
 

@@ -23661,7 +23661,7 @@ function dbAccRender(){
   const box = document.querySelector('#dbAccModal .dbm-modal-box');
   if(!box) return;
 
-  const tabs = ['overview','plans','payments','invoices','documents','methods']
+  const tabs = ['overview','billing','plans','payments','invoices','documents','methods']
     .map(t => `<button class="btn btn-sm ${d.tab===t?'btn-primary':''}" onclick="dbAccTab('${t}')">
        ${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join(' ');
 
@@ -23833,6 +23833,49 @@ function dbAccRender(){
       : '<div class="dbm-empty">No agreements on this account.</div>';
   }
 
+  /* ------------------------------------------------------- BILLING INFO */
+  /* What appears on their invoices, receipts and agreements. The email is
+     also their portal login, which is why a typo here is worth guarding
+     against server-side rather than trusting the form. */
+  if(d.tab==='billing'){
+    const f = (id,label,val,type) =>
+      `<div style="margin-bottom:12px">
+         <label style="display:block;font-size:11.5px;font-weight:700;letter-spacing:.05em;
+           text-transform:uppercase;color:#8a8a8a;margin-bottom:5px">${label}</label>
+         <input id="${id}" type="${type||'text'}" value="${dbmEsc(val==null?'':String(val))}"
+           style="width:100%;padding:10px;border-radius:8px;border:1px solid #2b2b2b;
+           background:#141414;color:#fff;font:inherit"></div>`;
+    body = `
+      <div style="color:#8a8a8a;font-size:12.5px;margin-bottom:16px;line-height:1.6">
+        These appear on the customer's invoices, receipts and agreements, and in their portal.
+        The email is also their portal sign-in.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
+        ${f('biName','Name',L.name)}
+        ${f('biCompany','Company',L.company)}
+        ${f('biEmail','Email (portal sign-in)',L.email,'email')}
+        ${f('biPhone','Phone',L.phone,'tel')}
+      </div>
+      ${f('biAddress','Billing address',L.address)}
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0 14px">
+        ${f('biCity','City',L.city)}
+        ${f('biState','State',L.state)}
+        ${f('biZip','ZIP',L.zip)}
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:11.5px;font-weight:700;letter-spacing:.05em;
+          text-transform:uppercase;color:#8a8a8a;margin-bottom:5px">Portal access</label>
+        <select id="biKind" style="width:100%;padding:10px;border-radius:8px;border:1px solid #2b2b2b;
+          background:#141414;color:#fff;font:inherit">
+          ${['customer','both','crm'].map(k=>`<option value="${k}" ${L.portal_kind===k?'selected':''}>
+            ${k==='customer'?'Customer portal only':k==='both'?'Customer portal + CRM':'CRM only (no customer portal)'}
+          </option>`).join('')}
+        </select>
+      </div>
+      <div id="biErr" class="dbm-alert" style="display:none"></div>
+      <button class="btn btn-primary" id="biSave">Save billing details</button>`;
+  }
+
   /* ----------------------------------------------------------- METHODS */
   if(d.tab==='methods'){
     body = `
@@ -23860,6 +23903,33 @@ function dbAccRender(){
         : '<div class="dbm-empty">No payment method saved. The customer adds one from their portal.</div>'}`;
   }
 
+  const afterRender = () => {
+    const bs = document.getElementById('biSave');
+    if(!bs) return;
+    bs.onclick = async () => {
+      const err = document.getElementById('biErr');
+      const val = id => (document.getElementById(id)||{}).value;
+      err.style.display = 'none';
+      bs.disabled = true; bs.textContent = 'Saving…';
+      try{
+        const r = await dbmSend('/api/admin/accounts/' + DBACC.lead.id + '/billing-info', {
+          name: val('biName'), company: val('biCompany'), email: val('biEmail'),
+          phone: val('biPhone'), address: val('biAddress'), city: val('biCity'),
+          state: val('biState'), zip: val('biZip'), portal_kind: val('biKind'),
+        }, 'PATCH');
+        if(!r || r.success === false) throw new Error((r && r.message) || 'Could not save.');
+        dbmNote(r.message || 'Billing details updated.');
+        await dbAccount(DBACC.lead.id, 'billing');
+      }catch(e){
+        err.style.display = 'block';
+        err.textContent = e.message;
+      }finally{
+        const b2 = document.getElementById('biSave');
+        if(b2){ b2.disabled = false; b2.textContent = 'Save billing details'; }
+      }
+    };
+  };
+
   box.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px">
       <div>
@@ -23873,6 +23943,7 @@ function dbAccRender(){
     ${feeBlock}
     ${body}
   `;
+  afterRender();
 }
 
 /* ---- actions -------------------------------------------------------- */
@@ -24322,7 +24393,12 @@ async function dbmNewPlan(){
 
     const btn = document.getElementById('mpGo');
     btn.disabled = true; btn.textContent = 'Creating…';
-    const d = await dbmSend('/api/admin/maintenance-plans', {
+    /* Wrapped for the same reason the edit form is: an unhandled throw here
+       froze the button on "Creating..." with no message, which is
+       indistinguishable from the click not registering. */
+    let d;
+    try{
+      d = await dbmSend('/api/admin/maintenance-plans', {
       leadId, planType,
       label: (document.getElementById('mpLabel')||{}).value || null,
       description: (document.getElementById('mpDesc')||{}).value || null,
@@ -24331,10 +24407,18 @@ async function dbmNewPlan(){
       interval: isAnnual ? 'year' : 'month',
       itemReference: (document.getElementById('mpItem')||{}).value || null,
       generateInvoice: document.getElementById('mpInvoice').checked,
-      sendAgreement: true
-    });
-    if(!d.success){
-      err.style.display='block'; err.textContent = d.message || 'Could not create the plan.';
+        sendAgreement: true
+      });
+    }catch(e){
+      console.error('[NEW PLAN] failed:', e);
+      err.style.display='block';
+      err.textContent = 'Could not create the plan: ' + (e && e.message ? e.message : e)
+                      + ' — nothing was created.';
+      btn.disabled = false; btn.textContent = 'Create plan & send agreement';
+      return;
+    }
+    if(!d || !d.success){
+      err.style.display='block'; err.textContent = (d && d.message) || 'Could not create the plan.';
       btn.disabled = false; btn.textContent = 'Create plan & send agreement';
       return;
     }

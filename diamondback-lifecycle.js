@@ -1675,7 +1675,93 @@ module.exports = function initLifecycle({
               WHERE lead_id = $1 AND status <> 'cancelled'`,
             [leadId]
         );
+        // ------------------------------------------------------------------
+        // CATCH UP EVERYTHING THAT WAS MISSED WHILE THERE WAS NO CARD.
+        //
+        // Signing an agreement and then not adding a payment method used to be
+        // free: the plan sat at pending_payment_method, the charge job skipped
+        // it because there was nothing to charge, and every period that went by
+        // was simply never billed. Add the card six months later and billing
+        // started from that day — the six months were gone.
+        //
+        // Now adding a method settles the arrears. Every period whose date has
+        // passed is charged, with its late fee, oldest first. That is what
+        // makes "sign it and stall" stop being a way to get free service.
+        // ------------------------------------------------------------------
+        setImmediate(() => {
+            catchUpAfterMethodAdded(leadId).catch((e) =>
+                console.error('[CATCH-UP] failed for lead', leadId, '-', e.message));
+        });
+
         return paymentMethodId;
+    }
+
+    /**
+     * Charge every period that fell due while the account had no payment
+     * method, plus a late fee for each one that is genuinely late.
+     *
+     * Runs detached from the request that added the card: the customer should
+     * see "card saved" immediately, not wait on a run of charges. Failures are
+     * logged and left to the daily job — a card that saves must never appear to
+     * fail because a catch-up charge was declined.
+     */
+    async function catchUpAfterMethodAdded(leadId) {
+        const arrears = require('./diamondback-arrears.js');
+
+        const plans = (await pool.query(
+            `SELECT * FROM maintenance_plans
+              WHERE lead_id = $1
+                AND status IN ('active','past_due','pending_payment_method')
+                AND signed_at IS NOT NULL`, [leadId])).rows;
+
+        for (const plan of plans) {
+            const method = await methodForPlan(plan);
+            if (!method) continue;
+
+            const perPeriod = planChargeTotal(plan, method);
+            if (perPeriod <= 0) continue;
+
+            const owed = arrears.arrearsFor(plan, perPeriod);
+            if (!owed.periodsMissed) continue;
+
+            console.log(`[CATCH-UP] plan ${plan.id}: ${owed.periodsMissed} period(s) missed, `
+                      + `${owed.total} owed plus ${owed.lateTotal} in late fees.`);
+
+            // Record the late fees first so they are on the account even if a
+            // charge is declined below.
+            for (const period of owed.periods) {
+                if (!period.isLate || period.lateFee <= 0) continue;
+                await pool.query(
+                    `INSERT INTO late_fees
+                        (lead_id, maintenance_plan_id, base_amount, rate, amount,
+                         due_date, period_key, notes)
+                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                     ON CONFLICT DO NOTHING`,
+                    [leadId, plan.id, plan.amount, period.lateFeeRate, period.lateFee,
+                     period.dueDate, `plan:${plan.id}:${period.dueDate}`,
+                     `Late fee — ${plan.label} for ${period.dueDate} (no payment method on file)`]
+                ).catch((e) => console.warn('[CATCH-UP] late fee not recorded:', e.message));
+            }
+
+            // Then charge the missed periods, oldest first. chargeMaintenancePlan
+            // advances next_charge_date each time, so the loop walks forward
+            // naturally and stops when nothing is due.
+            let guard = 0;
+            while (guard < owed.periodsMissed && guard < 24) {
+                const fresh = (await pool.query(
+                    'SELECT * FROM maintenance_plans WHERE id=$1', [plan.id])).rows[0];
+                if (!fresh || !fresh.next_charge_date) break;
+                if (new Date(fresh.next_charge_date) > new Date()) break;   // caught up
+                const out = await chargeMaintenancePlan(fresh).catch((e) => {
+                    console.warn(`[CATCH-UP] plan ${plan.id} charge failed:`, e.message);
+                    return null;
+                });
+                // Stop on a decline — dunning takes over rather than hammering
+                // a card that has already refused once.
+                if (!out || out.ok === false) break;
+                guard += 1;
+            }
+        }
     }
 
     /**
@@ -1939,6 +2025,73 @@ module.exports = function initLifecycle({
         )).rows[0];
         if (!plan) throw new Error('Plan not found');
         if (plan.status === 'cancelled') throw new Error('This plan is already cancelled');
+
+        // ------------------------------------------------------------------
+        // SIGNED, BUT NEVER PAID FOR — UNWIND IT RATHER THAN CANCEL IT.
+        //
+        // A plan that has been signed but has never had a payment method and
+        // has never been charged has not started. Cancelling it as though it
+        // were live would raise a settlement invoice for a service that never
+        // ran, and would leave a "cancelled" plan in the history of a customer
+        // who simply changed their mind before starting.
+        //
+        // So it goes back to exactly where it was before signing: the plan to
+        // pending_signature, the agreement to 'sent' and unsigned, the
+        // signature removed. The agreement is still there, still available to
+        // sign whenever they are ready. Nothing is owed, because nothing was
+        // ever provided.
+        //
+        // This only applies with NO METHOD and NO CHARGES. The moment either
+        // exists the plan has started and the normal settlement rules apply —
+        // which is what stops it becoming a way to walk away from an
+        // agreement you have already had service under.
+        // ------------------------------------------------------------------
+        const everCharged = Number(plan.charges_completed || 0) > 0 || !!plan.last_charge_date;
+        const hasMethod = !!(await methodForPlan(plan));
+
+        if (plan.signed_at && !everCharged && !hasMethod) {
+            await pool.query(
+                `UPDATE maintenance_plans
+                    SET status = 'pending_signature',
+                        signed_at = NULL,
+                        activated_at = NULL,
+                        current_period_paid_at = NULL,
+                        past_due_since = NULL,
+                        updated_at = NOW()
+                  WHERE id = $1`, [plan.id]);
+
+            if (plan.agreement_id) {
+                await pool.query(
+                    `UPDATE sales_agreements
+                        SET status = 'sent', signed_at = NULL, signature_name = NULL, updated_at = NOW()
+                      WHERE id = $1`, [plan.agreement_id]).catch(() => {});
+                await pool.query('DELETE FROM agreement_signatures WHERE agreement_id = $1',
+                                 [plan.agreement_id]).catch(() => {});
+                // Release the once-guard so it can be signed again.
+                await pool.query('DELETE FROM lifecycle_events WHERE once_key = $1',
+                                 [`sla_signed:agreement:${plan.agreement_id}`]).catch(() => {});
+            }
+
+            // Any late fee raised against a plan that never started is void.
+            await pool.query(
+                `UPDATE late_fees
+                    SET status='waived', waived_at=NOW(), waived_by='system',
+                        waive_reason='Plan unwound before it started — no payment method was ever added',
+                        updated_at=NOW()
+                  WHERE maintenance_plan_id=$1 AND status='outstanding'`, [plan.id]).catch(() => {});
+
+            console.log(`[LIFECYCLE] plan ${plan.id} unwound — signed but never paid for. `
+                      + 'Agreement is unsigned and pending again.');
+
+            return {
+                unwound: true,
+                planId: plan.id,
+                agreementId: plan.agreement_id || null,
+                message: 'That plan never started, so nothing is owed. Your agreement is back to '
+                       + 'unsigned and is still there whenever you want it — adding a payment '
+                       + 'method is what starts a plan.',
+            };
+        }
 
         // Nothing cancels while money is owed. The notice period is served, not
         // waived, so the periods inside it are payable — and a missed charge
@@ -5791,14 +5944,24 @@ module.exports = function initLifecycle({
                 });
             }
             const isMaintenance = out.kind === 'maintenance';
+
+            // A signed agreement with no payment method is a plan that has not
+            // started. Say so plainly and send them straight to adding one,
+            // rather than leaving it as something to find under Plans later —
+            // that gap is exactly how an agreement gets signed and never paid.
+            const needsMethod = isMaintenance && !out.active;
+
             res.json({
                 success: true,
                 kind: isMaintenance ? 'maintenance' : 'sla',
                 planActive: isMaintenance ? !!out.active : undefined,
+                // The portal opens the Add-a-method sheet on this.
+                needsPaymentMethod: needsMethod,
+                firstChargeDate: out.plan ? out.plan.next_charge_date : null,
                 message: isMaintenance
                     ? (out.active
                         ? 'Signed — your plan is active. You can see it under Plans.'
-                        : 'Signed. Add a payment method under Plans to start the plan; nothing is charged until you do.')
+                        : 'Signed. Add a payment method now to start the plan — it is not running until you do.')
                     : 'Signed. Your project timeline and invoice are in your portal.',
                 invoice: out.invoice ? {
                     number: out.invoice.invoice_number,

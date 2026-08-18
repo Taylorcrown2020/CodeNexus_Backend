@@ -1938,6 +1938,20 @@ async function openSign(agreementId){
            "Signed & complete" and has moved into Docs — no refresh needed. */
         await loadDash().catch(() => {});
         refreshUnread();
+
+        /* A signed plan with no payment method has NOT started. Go straight to
+           adding one rather than leaving it to be found under Plans later —
+           that gap is how an agreement gets signed and never paid. */
+        if(d.needsPaymentMethod){
+          toast('Signed. Add a payment method to start the plan.');
+          go('billing');
+          /* addMethod('card') is the real function — openAddMethod does not
+             exist, and the typeof guard would have silently done nothing. */
+          setTimeout(() => {
+            if(typeof addMethod === 'function') addMethod('card');
+          }, 700);
+          return;
+        }
         toast(d.invoice
           ? 'Signed. Invoice ' + d.invoice.number + ' is in your portal, due ' + fmtDate(d.invoice.dueDate) + '.'
           : (d.message || 'Signed.'));

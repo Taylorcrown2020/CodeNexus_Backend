@@ -24,6 +24,9 @@ const docs = require('./diamondback-documents.js');
 // card surcharge — or the home screen quotes one number and the card is charged
 // another. Same engine the charge path uses.
 const pricingEngine = require('./diamondback-pricing.js');
+// Every unpaid period, not just the latest one. See the module header: a
+// customer who missed six months owed six months and was shown one.
+const arrears = require('./diamondback-arrears.js');
 
 const {
     COMPANY, buildAgreementDocument, renderAgreementHTML, renderAgreementText,
@@ -455,10 +458,29 @@ module.exports = function initDocumentRoutes({
             };
 
             if (p.interval_unit === 'year') {
-                // Annual: informational only. Never counted in dueNow. An
-                // annual renewal falling after the cancellation date is not
-                // upcoming either — it simply will not happen.
-                if (!endsBeforeCharge) annualUpcoming.push({ ...entry, outstanding: false });
+                if (endsBeforeCharge) return;
+
+                // A renewal that has ALREADY COME AND GONE unpaid is not
+                // "upcoming" — it is a debt, and it belongs in the balance
+                // like any other. Only a genuinely future renewal stays
+                // informational. Missing this meant an unpaid year sat quietly
+                // in the Billing tab and never appeared as money owed.
+                const owedY = arrears.arrearsFor(p, amount);
+                if (p.period_unpaid && owedY.periodsMissed > 0 && amount > 0) {
+                    monthlyDue.push({
+                        ...entry,
+                        outstanding: true,
+                        overdue: true,
+                        amount: owedY.total,
+                        periodsOwed: owedY.periodsMissed,
+                        perPeriod: amount,
+                        arrearsLabel: arrears.arrearsLabel(p, owedY),
+                        unpaidPeriods: owedY.periods,
+                        isAnnualArrears: true,
+                    });
+                    return;
+                }
+                annualUpcoming.push({ ...entry, outstanding: false });
                 return;
             }
 
@@ -473,12 +495,25 @@ module.exports = function initDocumentRoutes({
             // a wrong sentence on the home screen.
             if (amount <= 0) return;
 
+            // EVERY unpaid period, not just this one. Missing three months has
+            // to read as three months of money, or the balance quietly
+            // under-states the debt and never catches up.
+            const owed = arrears.arrearsFor(p, amount);
+            const missed = Math.max(1, owed.periodsMissed);
+
             monthlyDue.push({
                 ...entry,
                 outstanding: true,
                 // Distinguishes "this month isn't paid yet" from "this is
                 // late", so the UI can word it without alarming anyone.
                 overdue: !!(dueDate && dueDate < today),
+                // The full arrears, so one line can show "3 months owed".
+                amount: missed > 1 ? owed.total : amount,
+                periodsOwed: missed,
+                perPeriod: amount,
+                arrearsLabel: arrears.arrearsLabel(p, owed),
+                unpaidPeriods: owed.periods,
+                arrearsCapped: !!owed.capped,
             });
         });
 
@@ -567,7 +602,8 @@ module.exports = function initDocumentRoutes({
             upcomingAnnualTotal: Math.round(
                 annualUpcoming.reduce((s, x) => s + x.amount, 0) * 100) / 100,
             // Stated in the payload so the UI copy and this rule can't diverge.
-            rule: 'Late fees are 1.5% of an amount that was not paid by its due date. '
+            rule: 'Every unpaid period counts, not just the most recent one. Late fees are '
+                + '1.5% per missed month and 3% per missed year. '
                 + 'Monthly plans count as outstanding for the current period even before the '
                 + 'charge date. Annual plans are shown under Billing and charged on their renewal '
                 + 'date. A plan with a cancellation in progress stops counting from its '

@@ -387,7 +387,7 @@ const CLAUSES = {
             `You are responsible for keeping a valid payment method on your account at all times. If a charge is declined we may retry it, and any amount that remains unpaid is subject to the late charges in this agreement. Repeated failure may result in suspension of the service.`,
             `The charge will appear on your statement as "{{STATEMENT_DESCRIPTOR}}". You will receive an emailed receipt after every successful charge.`,
             `If the amount or the schedule ever changes, we will tell you in writing at least ten (10) days beforehand, and a change in price requires a new signed agreement from you.`,
-            `TO STOP AUTOMATIC PAYMENTS: cancel the plan from your customer portal at any time, or email {{COMPANY_EMAIL}}. Cancellation takes effect {{NOTICE_DAYS}} days after we receive your request; charges falling due within that notice period remain payable and service continues until the cancellation date. You may also contact your bank to stop an ACH debit, subject to your bank's own rules and timing.`,
+            `TO STOP AUTOMATIC PAYMENTS: cancel the plan from your customer portal at any time, or email {{COMPANY_EMAIL}}. {{CANCEL_EFFECT_SENTENCE}} You may also contact your bank to stop an ACH debit, subject to your bank's own rules and timing.`,
         ],
     },
 
@@ -415,16 +415,16 @@ const CLAUSES = {
         heading: 'Term, renewal and cancellation',
         body: [
             `This plan begins on {{AUTOPAY_START}} and renews automatically for successive one-year periods until cancelled.`,
-            `YOU KEEP THE FULL YEAR YOU HAVE PAID FOR. Cancelling does not end the service {{NOTICE_DAYS}} days later — it ends it on your renewal date, which is the last day of the year you have already paid for. Nothing further is charged after that.`,
-            `CANCELLING CLOSE TO A RENEWAL. You must give at least {{NOTICE_DAYS}} days' notice before a renewal date to avoid that renewal. If we receive your cancellation within {{NOTICE_DAYS}} days of the renewal date, THE RENEWAL IS STILL CHARGED and is payable in full. That renewal buys you the following year, and the plan then ends at the end of that year.`,
-            `For example: if your renewal date is 1 March and you cancel on 20 February, the 1 March charge is still taken because it falls inside the {{NOTICE_DAYS}}-day notice period. You keep the service until the following 1 March, and nothing is charged after that. To avoid the March renewal entirely, cancel on or before {{ANNUAL_NOTICE_EXAMPLE}}.`,
+            `THERE IS NO NOTICE PERIOD ON THIS PLAN. Because it is an annual commitment, cancelling does not run down a notice period — it settles the year and ends at the end of it.`,
+            `IF YOU HAVE ALREADY PAID FOR THE CURRENT YEAR, nothing further is owed. Your cancellation is recorded and the plan ends the day before your next renewal date. You keep the service for every day you have paid for.`,
+            `IF THE CURRENT YEAR IS NOT YET PAID, cancelling settles it in full at that point. That payment covers a complete year, and the plan ends the day before the following renewal date. You are paying for a year and you receive a year.`,
+            `In either case the end date is the day BEFORE a renewal date, never the renewal date itself, so no further charge is ever taken after you cancel.`,
             `Fees already paid are non-refundable, including where you stop using the service part-way through a year. We do not pro-rate and we do not refund unused months.`,
-            `We may terminate this plan on {{NOTICE_DAYS}} days' notice, or immediately for non-payment. If we terminate for a reason other than non-payment, we will refund the unused whole months of the year you have paid for.`,
+            `We may terminate this plan on thirty (30) days' notice, or immediately for non-payment. If we terminate for a reason other than non-payment, we will refund the unused whole months of the year you have paid for.`,
             `Where this plan covers a domain name or another item that must be renewed with a third party, cancelling means we stop renewing it. Anything registered in our name will be transferred to you on request, provided the account is settled; if you take no action, it may lapse or expire, and we are not responsible for that.`,
             `After cancellation, reinstating the plan requires signing a new reinstatement agreement, and may be subject to our then-current pricing. A lapsed domain may not be recoverable at the original price, or at all.`,
         ],
     },
-
     recurringScope: {
         heading: 'What this plan covers',
         body: [
@@ -526,6 +526,16 @@ function buildAgreementDocument({ agreement, items = [], milestones = [], plan =
         COUNTY:               COMPANY.county,
         CUSTOMER_NAME:        a.customer_name || 'Client',
         NOTICE_DAYS:          String(noticeDays),
+        // Monthly runs a notice period; annual settles the year instead. One
+        // sentence, chosen by cadence, so the autopay clause cannot promise a
+        // 30-day notice on a plan that does not have one.
+        CANCEL_EFFECT_SENTENCE: isAnnual
+            ? 'There is no notice period: cancelling settles the current year if it is not '
+              + 'already paid, and the plan then ends the day before your next renewal date. '
+              + 'No further charge is taken after that.'
+            : `Cancellation takes effect ${noticeDays} days after we receive your request; charges `
+              + 'falling due within that notice period remain payable and service continues until '
+              + 'the cancellation date.',
         GRACE_DAYS:           String(process.env.LATE_FEE_GRACE_DAYS || 3),
         SUPPORT_HOURS:        process.env.PLAN_SUPPORT_HOURS || 'two (2) hours',
         LATE_FEE_PCT:         ((Number(process.env.LATE_FEE_RATE || 0.015)) * 100)
@@ -750,7 +760,12 @@ function buildAgreementDocument({ agreement, items = [], milestones = [], plan =
         summary.push(['Charged on', isAnnual
             ? (billingMonth && day ? `${MONTHS[billingMonth - 1]} ${day} each year` : 'The anniversary date each year')
             : (day ? `The ${ordinal(day)} of each month` : 'The same day each month')]);
-        summary.push(['Cancellation notice', `${noticeDays} days`]);
+        // Annual plans have NO notice period — printing "30 days" on one
+        // contradicts the clause three pages later, and the summary is the part
+        // customers actually read.
+        summary.push(isAnnual
+            ? ['Cancellation', 'No notice period — settles the year, ends the day before renewal']
+            : ['Cancellation notice', `${noticeDays} days`]);
     } else {
         summary.push(['Start date', prettyDate(a.start_date) || 'To be scheduled']);
         if (a.est_completion_date) summary.push(['Estimated completion', prettyDate(a.est_completion_date)]);

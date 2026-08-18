@@ -4291,54 +4291,26 @@ module.exports = function initLifecycle({
             if (!plan) throw new Error('Plan not found');
 
             // ------------------------------------------------------------
-            // THE END DATE IS THE LATER OF: the notice period, and the end of
-            // the last billing period they actually pay for.
-            //
-            // 30 days' notice alone was wrong. If they cancel on the 16th and
-            // a charge lands on the 25th, that charge is inside the notice
-            // window so they pay it — and it buys a full month, through the
-            // 25th of NEXT month. Ending them on day 30 took a month's money
-            // and gave back two weeks of service.
-            //
-            // Extended below as the settlement loop discovers what is actually
-            // billable. The CRM branch has always worked this way; maintenance
-            // plans did not.
             // ------------------------------------------------------------
-            effective = new Date(Date.now() + CANCELLATION_NOTICE_DAYS * 86400000);
-
-            // A period already paid for runs to the next charge date. If that
-            // is past the notice date, they keep what they've bought.
+            // TWO DIFFERENT RULES. ANNUAL IS NOT MONTHLY WITH A BIGGER NUMBER.
             //
-            // THIS MATTERS MOST FOR ANNUAL PLANS. Someone who paid for a year
-            // in March and cancels in August has ten months left. Ending them
-            // 30 days after the request would take a year's money and give
-            // back four weeks.
+            // MONTHLY — 30 days' notice. A charge falling inside that window is
+            //   billed, and it buys the month it covers, so the end date moves
+            //   out to the end of that month.
             //
-            // current_period_paid_at is the reliable signal, but it only
-            // exists from migration 011 onward. For a plan charged before
-            // that, last_charge_date with a FUTURE next_charge_date says the
-            // same thing: the current period is paid and runs to that date.
-            // Without this fallback, every pre-011 annual customer would lose
-            // the year they had already paid for.
-            // ------------------------------------------------------------
-            // A BILLING BOUNDARY IS NOT THE LAST DAY OF SERVICE.
+            // ANNUAL — NO NOTICE PERIOD AT ALL. Cancelling settles the year in
+            //   full and they keep the whole year they just paid for, ending
+            //   the day before the following renewal. Applying a 30-day notice
+            //   to a twelve-month term makes no sense in either direction: it
+            //   would either take a year's money and give back four weeks, or
+            //   let someone walk away from an annual commitment with a month's
+            //   notice.
             //
-            // A period that runs 9 Sep -> 9 Oct gives service through 8 Oct.
-            // The 9th is the FIRST day of the next period, not the last day of
-            // this one. Setting the end date to the 9th on a plan that bills on
-            // the 9th means the cancellation date and a charge date land on the
-            // same day, and whether they get charged again comes down to which
-            // job runs first and what time it is. That is not a coin-flip worth
-            // having in a billing system.
-            //
-            // So a boundary-derived end date is pulled back one day: the plan
-            // ends on the last day they actually paid for, and the charge date
-            // is safely past it.
-            //
-            // The 30-day NOTICE date is different — it is a plain date, not a
-            // period boundary, so 15 Sep means service through 15 Sep. Only
-            // boundary dates get the adjustment, which is why the two are
-            // tracked separately here.
+            // A BILLING BOUNDARY IS NOT THE LAST DAY OF SERVICE. A period that
+            // runs 18 Oct -> 18 Oct gives service through 17 Oct. Ending ON the
+            // renewal date would put the cancellation and a charge on the same
+            // day, and whether they get charged again would come down to which
+            // job ran first. So boundary dates are always pulled back one day.
             // ------------------------------------------------------------
             const dayBefore = (d) => {
                 const x = new Date(d);
@@ -4346,78 +4318,66 @@ module.exports = function initLifecycle({
                 return x;
             };
 
-            const paidThrough = plan.next_charge_date ? new Date(plan.next_charge_date) : null;
+            const isAnnualPlan = intervalUnit(plan) === 'year';
+            const nextCharge = plan.next_charge_date ? new Date(plan.next_charge_date) : null;
             const periodIsPaid = !!plan.current_period_paid_at
-                || (!!plan.last_charge_date && paidThrough && paidThrough > new Date());
-            if (periodIsPaid && paidThrough && !isNaN(paidThrough)) {
-                const lastPaidDay = dayBefore(paidThrough);
-                if (lastPaidDay > effective) effective = lastPaidDay;
-            }
+                || (!!plan.last_charge_date && nextCharge && nextCharge > new Date());
 
-            // Unpaid invoices already raised against this plan.
-            const openInv = (await pool.query(
-                `SELECT id, invoice_number, total_amount, due_date
-                   FROM invoices
-                  WHERE lead_id = $1 AND maintenance_plan_id = $2
-                    AND status NOT IN ('paid','void','cancelled','refunded','draft')`,
-                [leadId, plan.id]
-            )).rows;
-            for (const i of openInv) {
-                lines.push({
-                    kind: 'unpaid_invoice', invoiceId: i.id,
-                    label: `Unpaid invoice ${i.invoice_number}`,
-                    amount: Number(i.total_amount),
-                });
-            }
+            if (isAnnualPlan) {
+                // ---- ANNUAL ---------------------------------------------
+                const settleMethodA = await methodForPlan(plan);
 
-            // A charge that has already failed leaves the period unpaid even
-            // though no invoice exists for it — autopay plans don't raise one.
-            if (plan.status === 'past_due' || Number(plan.consecutive_failures) > 0) {
-                lines.push({
-                    kind: 'missed_charge',
-                    label: `Missed ${plan.label} payment`,
-                    amount: planChargeTotal(plan, await methodForPlan(plan)),
-                });
-            }
-
-            // Every scheduled charge landing inside the notice window. The
-            // service runs until the effective date, so those periods are owed.
-            // STRICTLY BEFORE the effective date. A charge landing exactly ON
-            // the end date opens a period that runs entirely after the plan has
-            // ended — billing it charges for service never provided. This must
-            // stay in step with the outstanding rule in
-            // diamondback-document-routes.js, which drops any charge dated
-            // >= the cancellation date; if one uses <= and the other <, the
-            // balance and the settlement quote disagree by a month.
-            //
-            // EACH BILLED CHARGE EXTENDS THE END DATE to the end of the period
-            // it buys. That is what "pay for the notice period, keep the
-            // service you paid for" means. The loop still terminates: once a
-            // charge extends `effective` to the end of its own period, the
-            // cursor sits exactly on the new end date and the condition fails.
-            //
-            // The amount is priced against the real payment method, so the
-            // settlement quote and the actual charge agree to the cent —
-            // including the credit card surcharge, if one applies.
-            const settleMethod = await methodForPlan(plan);
-            let cursor = plan.next_charge_date ? new Date(plan.next_charge_date) : null;
-            let guard = 0;
-            while (cursor && cursor < effective && guard < 24) {
-                lines.push({
-                    kind: 'notice_period',
-                    label: `${plan.label} — ${prettyDate(cursor)}`,
-                    amount: planChargeTotal(plan, settleMethod),
-                    date: dateOnly(cursor),
-                });
-                const periodEnd = nextChargeFor(plan, cursor);
-                // Same rule: the period this charge buys runs UP TO the next
-                // boundary, so the last day of service is the day before it.
-                if (periodEnd) {
-                    const lastDay = dayBefore(periodEnd);
-                    if (lastDay > effective) effective = lastDay;
+                if (periodIsPaid && nextCharge && !isNaN(nextCharge)) {
+                    // Already paid for this year. Nothing further is owed and
+                    // they keep it to the day before renewal.
+                    effective = dayBefore(nextCharge);
+                } else if (nextCharge && !isNaN(nextCharge)) {
+                    // Not paid. Settle the year in full now; that buys them
+                    // through to the day before the FOLLOWING renewal.
+                    lines.push({
+                        kind: 'annual_settlement',
+                        label: `${plan.label} — ${prettyDate(nextCharge)} (full year)`,
+                        amount: planChargeTotal(plan, settleMethodA),
+                        date: dateOnly(nextCharge),
+                    });
+                    const followingRenewal = nextChargeFor(plan, nextCharge);
+                    effective = followingRenewal ? dayBefore(followingRenewal) : dayBefore(nextCharge);
+                } else {
+                    // No renewal date on record — end it today rather than
+                    // inventing a year of service nobody can point at.
+                    effective = new Date();
                 }
-                cursor = periodEnd;
-                guard += 1;
+            } else {
+                // ---- MONTHLY --------------------------------------------
+                effective = new Date(Date.now() + CANCELLATION_NOTICE_DAYS * 86400000);
+
+                if (periodIsPaid && nextCharge && !isNaN(nextCharge)) {
+                    const lastPaidDay = dayBefore(nextCharge);
+                    if (lastPaidDay > effective) effective = lastPaidDay;
+                }
+
+                // Charges falling STRICTLY BEFORE the end date are billed, and
+                // each one pushes the end date to the end of the month it buys.
+                // Terminates: once a charge extends the end date to its own
+                // period end, the cursor sits on it and the condition fails.
+                const settleMethod = await methodForPlan(plan);
+                let cursor = nextCharge;
+                let guard = 0;
+                while (cursor && cursor < effective && guard < 24) {
+                    lines.push({
+                        kind: 'notice_period',
+                        label: `${plan.label} — ${prettyDate(cursor)}`,
+                        amount: planChargeTotal(plan, settleMethod),
+                        date: dateOnly(cursor),
+                    });
+                    const periodEnd = nextChargeFor(plan, cursor);
+                    if (periodEnd) {
+                        const lastDay = dayBefore(periodEnd);
+                        if (lastDay > effective) effective = lastDay;
+                    }
+                    cursor = periodEnd;
+                    guard += 1;
+                }
             }
         } else if (kind === 'crm') {
             const sub = (await pool.query(

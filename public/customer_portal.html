@@ -2252,12 +2252,17 @@ async function cancelPlan(kind, id){
     '<p class="sheet-sub">' + (endsOn
         ? 'Last day of service: ' + endsOn + (daysLeft != null && daysLeft > 0
             ? ' &middot; ' + daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + ' from now' : '')
-        : NOTICE_DAYS + '-day notice period') + '.</p>' +
+        : (annual ? 'Settles the year, then ends the day before your next renewal'
+                  : NOTICE_DAYS + '-day notice period')) + '.</p>' +
     (owed
       ? '<div class="alert alert-warn">' + (annual
-          ? 'Your renewal falls inside the ' + NOTICE_DAYS + '-day notice period, so it is still payable — ' +
-            money(owed) + ' needs settling before this can be cancelled. That payment covers you for the ' +
-            'full year through ' + (endsOn || 'your next renewal') + ', and nothing is charged after that.'
+          /* Annual has NO notice period. Cancelling settles the year and they
+             keep the whole year — "your renewal falls inside the 30-day notice
+             period" would be flatly wrong about what they are paying for. */
+          ? 'This is an annual plan, so cancelling settles the year in full — ' + money(owed) +
+            ' needs paying now. That covers you right through to ' +
+            (endsOn || 'the day before your next renewal') +
+            ', and nothing is ever charged after that.'
           : 'Your ' + NOTICE_DAYS + '-day notice period is still payable, so ' + money(owed) +
             ' needs settling before this can be cancelled.') +
         ' You can pay it here and we\'ll cancel straight after.</div>' + breakdown
@@ -2265,8 +2270,8 @@ async function cancelPlan(kind, id){
           ? 'You keep full CRM access until the notice period ends. <b>Your customer portal isn\'t affected</b> — invoices, receipts and messages stay right here.'
           : annual
             ? 'You have already paid for this year, so you keep the service through ' +
-              (endsOn || 'your renewal date') + ' — the last day of the year you paid for. ' +
-              'Nothing further will be charged.'
+              (endsOn || 'the day before your renewal') + ' — the last day of the year you paid for. ' +
+              'There is no notice period and nothing further will be charged.'
             : 'Your service continues until the notice period ends.') +
         ' Reinstating later needs a short document signed.</div>') +
     '<div class="field"><label for="cxReason">Anything we could have done better? (optional)</label>' +

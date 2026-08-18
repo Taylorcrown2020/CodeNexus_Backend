@@ -150,29 +150,51 @@ module.exports = function initLateFees({ pool }) {
                     AND ($1::int IS NULL OR mp.lead_id = $1)`,
                 [leadId]);
 
+            // ONE FEE PER MISSED PERIOD, not one per plan.
+            //
+            // This used to charge a single fee keyed on next_charge_date, so a
+            // customer six months behind paid one 1.5% fee on one month. The
+            // arrears walk below produces every missed period, and each gets
+            // its own fee with its own period_key — so the unique index still
+            // stops duplicates, but six missed months now means six fees.
+            const arrears = require('./diamondback-arrears.js');
+
             for (const p of plans.rows) {
                 if (p.exempt) continue;
-                if (!isPastDue(p.next_charge_date, asOf)) continue;
-                const rate = p.late_fee_rate != null ? Number(p.late_fee_rate) : DEFAULT_LATE_FEE_RATE;
-                const amount = feeFor(p.amount, rate);
-                if (amount <= 0) continue;   // a $0 plan cannot be late for money
-                const key = periodKey('plan', p.id, p.next_charge_date);
-                const ins = await pool.query(
-                    `INSERT INTO late_fees
-                        (lead_id, maintenance_plan_id, base_amount, rate, amount,
-                         due_date, period_key, notes)
-                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-                     ON CONFLICT DO NOTHING
-                     RETURNING *`,
-                    [p.lead_id, p.id, p.amount, rate, amount, p.next_charge_date, key,
-                     `Late fee — ${p.label} (${p.interval_unit === 'year' ? 'annual' : 'monthly'})`]);
-                if (ins.rows[0]) {
-                    created.push(ins.rows[0]);
-                    // Mark when it went late, for the admin "past due since" line.
-                    await pool.query(
-                        `UPDATE maintenance_plans
-                            SET past_due_since = COALESCE(past_due_since, $2), updated_at = NOW()
-                          WHERE id = $1`, [p.id, p.next_charge_date]).catch(() => {});
+                if (Number(p.amount || 0) <= 0) continue;   // a $0 plan owes nothing
+
+                const owed = arrears.arrearsFor(p, Number(p.amount || 0), asOf);
+                let markedPastDue = false;
+
+                for (const period of owed.periods) {
+                    if (!period.isLate || period.lateFee <= 0) continue;   // still in grace
+
+                    const key = periodKey('plan', p.id, period.dueDate);
+                    const ins = await pool.query(
+                        `INSERT INTO late_fees
+                            (lead_id, maintenance_plan_id, base_amount, rate, amount,
+                             due_date, period_key, notes)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                         ON CONFLICT DO NOTHING
+                         RETURNING *`,
+                        [p.lead_id, p.id, p.amount, period.lateFeeRate, period.lateFee,
+                         period.dueDate, key,
+                         `Late fee — ${p.label} (${p.interval_unit === 'year' ? 'annual' : 'monthly'}) `
+                         + `for ${period.dueDate}`]);
+
+                    if (ins.rows[0]) {
+                        created.push(ins.rows[0]);
+                        if (!markedPastDue) {
+                            // Dated from the OLDEST missed period, so "past due
+                            // since" says how long they have actually been
+                            // behind rather than when we last looked.
+                            await pool.query(
+                                `UPDATE maintenance_plans
+                                    SET past_due_since = COALESCE(past_due_since, $2), updated_at = NOW()
+                                  WHERE id = $1`, [p.id, owed.periods[0].dueDate]).catch(() => {});
+                            markedPastDue = true;
+                        }
+                    }
                 }
             }
         } catch (e) {

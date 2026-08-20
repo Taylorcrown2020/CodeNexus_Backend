@@ -410,19 +410,6 @@ module.exports = function initLifecycle({
      *
      * Never touches lead scoring. See the firewall note in the header.
      */
-    // Required up here because notify() below uses it. A `const` referenced
-    // before its declaration is a temporal dead zone error that only shows at
-    // runtime — the same trap that broke plan saving.
-    const testMode = require('./diamondback-testmode.js');
-
-    /**
-     * Send an email/SMS to a customer.
-     *
-     * IN TEST MODE this drops anything not on TEST_EMAIL_ALLOWLIST. The guard
-     * lives inside the function rather than wrapping it, because a wrapper is
-     * one careless reassignment away from being bypassed — and the thing being
-     * prevented is emailing a real customer from a sandbox.
-     */
     async function notify({
         leadId, lead, kind, subject, bodyHtml, smsText, cta,
         channels = ['email'], invoiceId = null, scheduleId = null,
@@ -434,21 +421,6 @@ module.exports = function initLifecycle({
             console.error(`[LIFECYCLE] REFUSING to send unknown kind '${kind}'. ` +
                           'Add it to TRANSACTIONAL_TYPES or it will feed lead scoring.');
             return { ok: false, error: 'unknown_kind' };
-        }
-
-        // TEST MODE: nothing leaves the building unless the address is on the
-        // allowlist. Checked here, before any lookup or send, so there is no
-        // path through this function that reaches a real inbox.
-        if (testMode.IS_TEST) {
-            const addr = (lead && lead.email)
-                || (leadId ? (await pool.query('SELECT email FROM leads WHERE id=$1', [leadId])
-                                .then((r) => r.rows[0] && r.rows[0].email)
-                                .catch(() => null)) : null);
-            if (!testMode.mayContact(addr)) {
-                console.log(`[TEST MODE] dropped "${subject || kind}" to ${addr || '(no address)'} `
-                          + '— add it to TEST_EMAIL_ALLOWLIST to receive it.');
-                return { ok: true, dropped: true, testMode: true };
-            }
         }
 
         if (!lead && leadId) {

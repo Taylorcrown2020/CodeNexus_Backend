@@ -23558,6 +23558,7 @@ function dbmToken(){
   return localStorage.getItem('adminToken') || localStorage.getItem('token') ||
          sessionStorage.getItem('adminToken') || '';
 }
+
 async function dbmGet(path){
   // Use API_URL like the rest of the portal, so this still works if the page is
   // ever served from a different origin than the API.

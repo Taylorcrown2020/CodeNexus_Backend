@@ -529,33 +529,6 @@ body[data-theme="forest"] .login{background:var(--canvas)}
    State + helpers
    ============================================================================ */
 
-/* ===================================================================== */
-/* TEST MODE BANNER                                                      */
-/* Driven by the Stripe key on the server, not a local setting — so it   */
-/* cannot say "test" while real money is moving.                         */
-/* ===================================================================== */
-(async function dbTestBanner(){
-  try{
-    const r = await fetch((typeof API !== 'undefined' ? API : (typeof API_URL !== 'undefined' ? API_URL : '')) + '/api/test-mode');
-    const t = await r.json();
-    if(!t || (!t.testMode && !t.warning)) return;
-    const bar = document.createElement('div');
-    const bad = !!t.warning;
-    bar.textContent = t.warning || t.banner;
-    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;'
-      + 'background:' + (bad ? '#b91c1c' : '#a16207') + ';color:#fff;'
-      + 'font:600 12.5px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;'
-      + 'padding:7px 14px;text-align:center;letter-spacing:.01em;'
-      + 'box-shadow:0 1px 6px rgba(0,0,0,.3)';
-    document.addEventListener('DOMContentLoaded', () => document.body.appendChild(bar));
-    if(document.body) document.body.appendChild(bar);
-    /* Push the app down so the banner never covers anything. */
-    const pad = document.createElement('style');
-    pad.textContent = 'body{padding-top:30px!important}';
-    document.head.appendChild(pad);
-  }catch(e){ /* no banner is better than a broken portal */ }
-})();
-
 const API = window.location.origin;
 /* ===================================================================== */
 /* THEMES                                                                */

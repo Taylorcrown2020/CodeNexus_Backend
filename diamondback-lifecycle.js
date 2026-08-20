@@ -5487,6 +5487,13 @@ module.exports = function initLifecycle({
             }
             try { p.__price = pricing.priceFor(p, method); }
             catch (e) { console.warn('[PLANS] pricing skipped:', e.message); }
+            try {
+                const arr = require('./diamondback-arrears.js');
+                const per = p.__price ? p.__price.total : Number(p.amount || 0);
+                const a = arr.arrearsFor(p, per);
+                p.__arrears = { periodsMissed: a.periodsMissed, total: a.total,
+                                lateTotal: a.lateTotal, label: arr.arrearsLabel(p, a) };
+            } catch (e) { console.warn('[PLANS] arrears skipped:', e.message); }
         }
 
         const plans = maint.map((p) => ({
@@ -5532,6 +5539,13 @@ module.exports = function initLifecycle({
             // A price/schedule change waiting on the customer's signature. The
             // plan keeps billing the CURRENT amount until then, so both figures
             // have to be visible or the customer cannot tell which is which.
+            // Arrears and fees ON THIS PLAN, so the plan card can show them.
+            // They were only ever on the home balance, which is why a plan two
+            // days overdue looked completely fine on the Billing screen.
+            arrears_periods: p.__arrears ? p.__arrears.periodsMissed : 0,
+            arrears_total: p.__arrears ? p.__arrears.total : 0,
+            late_fee_total: p.__arrears ? p.__arrears.lateTotal : 0,
+            arrears_label: p.__arrears ? p.__arrears.label : null,
             pending_amount: p.pending_amount != null ? Number(p.pending_amount) : null,
             pending_billing_day: p.pending_billing_day != null ? Number(p.pending_billing_day) : null,
             pending_agreement_id: p.pending_agreement_id || null,

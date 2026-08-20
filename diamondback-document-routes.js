@@ -42,6 +42,16 @@ module.exports = function initDocumentRoutes({
     CANCELLATION_NOTICE_DAYS = Number(process.env.CANCELLATION_NOTICE_DAYS || 30),
 }) {
 
+    // Late fees are WRITTEN by the assessor and only READ here. Without a call
+    // to it, the balance showed no fee until the hourly job happened to run —
+    // so a payment that went overdue minutes ago looked fine, which is exactly
+    // what "the late fee is not being applied" looked like.
+    //
+    // Assessing on read makes the figure current the moment anyone looks. It is
+    // idempotent (one fee per obligation per period, enforced by a unique
+    // index), so calling it here cannot double-charge.
+    const lateFeeEngine = require('./diamondback-late-fees.js')({ pool });
+
     // ------------------------------------------------------------------
     // Schema tolerance
     // ------------------------------------------------------------------
@@ -660,6 +670,10 @@ module.exports = function initDocumentRoutes({
     app.get('/api/portal/outstanding', authenticatePortal, async (req, res) => {
         try {
             const leadId = await resolveLeadId(req.user.id, req.user.email);
+            // Charge anything that has fallen late since the last look, so the
+            // balance is right now rather than after the next hourly run.
+            await lateFeeEngine.assessLateFees({ leadId }).catch((e) =>
+                console.warn('[OUTSTANDING] fee assessment skipped:', e.message));
             res.json({ success: true, outstanding: await outstandingFor(leadId) });
         } catch (e) {
             console.error('[OUTSTANDING]', e.message);

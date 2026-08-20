@@ -1407,6 +1407,19 @@ function planCard(p){
          the 30 days, the end date moves out to cover it. Saying so stops the
          later date looking like a mistake. */
       ' You keep everything you&rsquo;ve paid for through that date.' + '</div>' : '') +
+    /* OVERDUE AND FEES, ON THE PLAN ITSELF. These only appeared on the home
+       balance before, so a plan days past its first payment looked perfectly
+       healthy on the screen you actually go to. */
+    (Number(p.arrears_periods) > 0
+      ? '<div class="alert alert-warn" style="margin:12px 0 0">' +
+        '<b>' + esc(p.arrears_label || (p.arrears_periods + ' overdue')) + '</b><br>' +
+        money(p.arrears_total) + ' unpaid' +
+        (Number(p.late_fee_total) > 0
+          ? ' &middot; ' + money(p.late_fee_total) + ' in late fees' : '') +
+        '<br><span style="font-size:12.5px">Total owed: <b>' +
+        money(Number(p.arrears_total) + Number(p.late_fee_total || 0)) + '</b></span>' +
+        '</div>'
+      : '') +
     (needsSig ? '<div class="alert alert-info" style="margin:12px 0 0">Needs your signature before it can start. Nothing is charged until you sign.</div>' : '') +
     (needsPm ? '<div class="alert alert-info" style="margin:12px 0 0">Signed &mdash; add a payment method to start the plan.</div>' : '') +
     /* A cancelling plan has no "first payment" and does not "renew monthly".

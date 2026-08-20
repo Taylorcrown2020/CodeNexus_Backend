@@ -410,6 +410,19 @@ module.exports = function initLifecycle({
      *
      * Never touches lead scoring. See the firewall note in the header.
      */
+    // Required up here because notify() below uses it. A `const` referenced
+    // before its declaration is a temporal dead zone error that only shows at
+    // runtime — the same trap that broke plan saving.
+    const testMode = require('./diamondback-testmode.js');
+
+    /**
+     * Send an email/SMS to a customer.
+     *
+     * IN TEST MODE this drops anything not on TEST_EMAIL_ALLOWLIST. The guard
+     * lives inside the function rather than wrapping it, because a wrapper is
+     * one careless reassignment away from being bypassed — and the thing being
+     * prevented is emailing a real customer from a sandbox.
+     */
     async function notify({
         leadId, lead, kind, subject, bodyHtml, smsText, cta,
         channels = ['email'], invoiceId = null, scheduleId = null,
@@ -421,6 +434,21 @@ module.exports = function initLifecycle({
             console.error(`[LIFECYCLE] REFUSING to send unknown kind '${kind}'. ` +
                           'Add it to TRANSACTIONAL_TYPES or it will feed lead scoring.');
             return { ok: false, error: 'unknown_kind' };
+        }
+
+        // TEST MODE: nothing leaves the building unless the address is on the
+        // allowlist. Checked here, before any lookup or send, so there is no
+        // path through this function that reaches a real inbox.
+        if (testMode.IS_TEST) {
+            const addr = (lead && lead.email)
+                || (leadId ? (await pool.query('SELECT email FROM leads WHERE id=$1', [leadId])
+                                .then((r) => r.rows[0] && r.rows[0].email)
+                                .catch(() => null)) : null);
+            if (!testMode.mayContact(addr)) {
+                console.log(`[TEST MODE] dropped "${subject || kind}" to ${addr || '(no address)'} `
+                          + '— add it to TEST_EMAIL_ALLOWLIST to receive it.');
+                return { ok: true, dropped: true, testMode: true };
+            }
         }
 
         if (!lead && leadId) {
@@ -1082,12 +1110,54 @@ module.exports = function initLifecycle({
             );
         }
 
-        await pool.query(
-            `UPDATE sales_agreements
-                SET status='signed', signed_at=NOW(), signature_name=$2, updated_at=NOW()
-              WHERE id=$1`,
-            [agreementId, name]
-        );
+        // ------------------------------------------------------------------
+        // A RECURRING AGREEMENT IS ONLY "SIGNED" ONCE IT CAN BE CHARGED.
+        //
+        // With no payment method on file the typed name is held in
+        // provisional_signed_at and status stays 'sent'. Every screen reads
+        // signed_at, so the customer keeps seeing "Review & sign" — which is
+        // accurate, because nothing can be billed.
+        //
+        // A one-off project SLA is different: there is nothing recurring to
+        // charge, so it commits immediately as it always did.
+        // ------------------------------------------------------------------
+        const needsMethodFirst = ['maintenance', 'subscription'].includes(a.agreement_kind);
+        const methodOnFile = needsMethodFirst
+            ? (await pool.query(
+                `SELECT 1 FROM payment_methods WHERE lead_id=$1 AND status='active' LIMIT 1`,
+                [a.lead_id])).rows.length > 0
+            : true;
+
+        if (needsMethodFirst && !methodOnFile) {
+            await pool.query(
+                `UPDATE sales_agreements
+                    SET status = 'sent',
+                        signed_at = NULL,
+                        signature_name = NULL,
+                        provisional_signed_at = COALESCE(provisional_signed_at, NOW()),
+                        provisional_signer_name = $2,
+                        updated_at = NOW()
+                  WHERE id = $1`,
+                [agreementId, name]
+            ).catch(async (e) => {
+                // Pre-015 database: fall back to the old behaviour rather than
+                // failing a signature the customer has already given.
+                console.warn('[LIFECYCLE] provisional columns missing — run migration 015:', e.message);
+                await pool.query(
+                    `UPDATE sales_agreements
+                        SET status='signed', signed_at=NOW(), signature_name=$2, updated_at=NOW()
+                      WHERE id=$1`, [agreementId, name]);
+            });
+            console.log(`[LIFECYCLE] agreement ${a.agreement_number} signed PROVISIONALLY — `
+                      + 'no payment method yet, so it stays unsigned until one is added.');
+        } else {
+            await pool.query(
+                `UPDATE sales_agreements
+                    SET status='signed', signed_at=NOW(), signature_name=$2, updated_at=NOW()
+                  WHERE id=$1`,
+                [agreementId, name]
+            );
+        }
 
         // ------------------------------------------------------------------
         // MAINTENANCE AGREEMENTS STOP HERE.
@@ -1223,9 +1293,28 @@ module.exports = function initLifecycle({
 
             const nextCharge = plan.next_charge_date || dateOnly(nextBillingDate(plan.billing_day || 1));
 
+            // ----------------------------------------------------------
+            // NO PAYMENT METHOD -> THE SIGNATURE IS PROVISIONAL.
+            //
+            // signed_at is set ONLY when a card is already on file. Otherwise
+            // the typed name is held in provisional_signed_at and every screen
+            // that reads signed_at keeps showing "Review & sign" — which is the
+            // truth, because nothing can be charged.
+            //
+            // This replaces undoing the signature when the payment sheet is
+            // closed. That only worked if the portal got a chance to call back;
+            // closing the tab or losing signal left the agreement reading
+            // "signed" with nothing behind it. Now abandoning halfway is the
+            // DEFAULT outcome rather than something we have to catch.
+            //
+            // The evidence is kept either way: agreement_signatures still holds
+            // the typed name, time, IP, browser and document hash.
+            // ----------------------------------------------------------
             const updated = (await pool.query(
                 `UPDATE maintenance_plans
-                    SET signed_at = COALESCE(signed_at, NOW()),
+                    SET signed_at = CASE WHEN $3::int IS NOT NULL
+                                         THEN COALESCE(signed_at, NOW()) ELSE NULL END,
+                        provisional_signed_at = COALESCE(provisional_signed_at, NOW()),
                         payment_method_id = COALESCE(payment_method_id, $3),
                         status = CASE WHEN $3::int IS NOT NULL THEN 'active' ELSE 'pending_payment_method' END,
                         activated_at = CASE WHEN $3::int IS NOT NULL THEN COALESCE(activated_at, NOW()) ELSE activated_at END,
@@ -1705,7 +1794,56 @@ module.exports = function initLifecycle({
      * logged and left to the daily job — a card that saves must never appear to
      * fail because a catch-up charge was declined.
      */
+    /**
+     * COMMIT ANY PROVISIONAL SIGNATURE NOW THAT A CARD EXISTS.
+     *
+     * The customer typed their name earlier; the plan has been sitting unsigned
+     * because there was nothing to charge. Adding a method is the second half
+     * of the same act, so the agreement becomes signed — dated from the moment
+     * they actually signed it, not from when the card arrived. Backdating would
+     * be wrong; using the card's timestamp would misrepresent when they agreed.
+     */
+    async function commitProvisionalSignatures(leadId) {
+        try {
+            const plans = (await pool.query(
+                `SELECT * FROM maintenance_plans
+                  WHERE lead_id = $1
+                    AND provisional_signed_at IS NOT NULL
+                    AND signed_at IS NULL
+                    AND status <> 'cancelled'`, [leadId])).rows;
+
+            for (const plan of plans) {
+                await pool.query(
+                    `UPDATE maintenance_plans
+                        SET signed_at = provisional_signed_at,
+                            status = 'active',
+                            activated_at = COALESCE(activated_at, NOW()),
+                            updated_at = NOW()
+                      WHERE id = $1`, [plan.id]);
+
+                if (plan.agreement_id) {
+                    await pool.query(
+                        `UPDATE sales_agreements
+                            SET status = 'signed',
+                                signed_at = COALESCE(provisional_signed_at, NOW()),
+                                signature_name = COALESCE(provisional_signer_name, signature_name),
+                                updated_at = NOW()
+                          WHERE id = $1`, [plan.agreement_id]);
+                }
+                console.log(`[LIFECYCLE] plan ${plan.id} committed — card added, `
+                          + 'agreement now genuinely signed and active.');
+            }
+        } catch (e) {
+            // Pre-015 database has no provisional columns; nothing to commit.
+            console.warn('[LIFECYCLE] commitProvisionalSignatures skipped:', e.message);
+        }
+    }
+
     async function catchUpAfterMethodAdded(leadId) {
+        // Commit first: a plan cannot be charged while it still reads unsigned,
+        // and the arrears walk below depends on it being active.
+        await commitProvisionalSignatures(leadId);
+
         const arrears = require('./diamondback-arrears.js');
 
         const plans = (await pool.query(
@@ -5761,6 +5899,60 @@ module.exports = function initLifecycle({
     });
 
     // ---- customer portal: cancel / reinstate ------------------------------
+    /**
+     * BACK OUT OF A PLAN THAT HAS NOT STARTED.
+     *
+     * Called when the customer dismisses the add-a-payment-method sheet that
+     * opened right after signing. Signing and then closing that sheet is not a
+     * commitment — no card, no charge, nothing provided — so the agreement goes
+     * back to unsigned and stays available to sign later.
+     *
+     * Deliberately separate from the cancel route. This one REFUSES if the plan
+     * has a payment method or has ever been charged, so it can never be used to
+     * walk away from a plan that is actually running.
+     */
+    app.post('/api/portal/maintenance-plans/:id/unwind', authenticatePortal, async (req, res) => {
+        try {
+            const leadId = await resolveLeadId(req.user.id, req.user.email);
+            const plan = (await pool.query(
+                'SELECT * FROM maintenance_plans WHERE id=$1 AND lead_id=$2',
+                [req.params.id, leadId])).rows[0];
+            if (!plan) return res.status(404).json({ success: false, message: 'Plan not found.' });
+
+            const everCharged = Number(plan.charges_completed || 0) > 0 || !!plan.last_charge_date;
+            const hasMethod = !!(await methodForPlan(plan));
+
+            if (everCharged || hasMethod) {
+                return res.status(409).json({
+                    success: false,
+                    started: true,
+                    message: 'This plan has already started, so it has to be cancelled properly '
+                           + 'rather than undone.',
+                });
+            }
+            if (!plan.signed_at) {
+                // Already unsigned — nothing to undo, and saying so beats an error.
+                return res.json({ success: true, alreadyUnsigned: true,
+                                  message: 'That agreement is already unsigned.' });
+            }
+
+            const out = await requestPlanCancellation({
+                planId: plan.id, leadId, requestedBy: 'customer',
+                reason: 'Backed out before adding a payment method',
+            });
+
+            res.json({
+                success: true,
+                unwound: !!out.unwound,
+                agreementId: plan.agreement_id || null,
+                message: out.message || 'Your agreement is unsigned again and nothing has started.',
+            });
+        } catch (e) {
+            console.error('[UNWIND]', e.message);
+            res.status(500).json({ success: false, message: e.message });
+        }
+    });
+
     app.post('/api/portal/maintenance-plans/:id/cancel', authenticatePortal, async (req, res) => {
         try {
             const leadId = await resolveLeadId(req.user.id, req.user.email);
@@ -5958,6 +6150,9 @@ module.exports = function initLifecycle({
                 // The portal opens the Add-a-method sheet on this.
                 needsPaymentMethod: needsMethod,
                 firstChargeDate: out.plan ? out.plan.next_charge_date : null,
+                // Which plan to undo if they close the card sheet without
+                // adding one. The portal cannot work this out on its own.
+                planId: out.plan ? out.plan.id : null,
                 message: isMaintenance
                     ? (out.active
                         ? 'Signed — your plan is active. You can see it under Plans.'

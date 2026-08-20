@@ -528,6 +528,34 @@ body[data-theme="forest"] .login{background:var(--canvas)}
 /* ============================================================================
    State + helpers
    ============================================================================ */
+
+/* ===================================================================== */
+/* TEST MODE BANNER                                                      */
+/* Driven by the Stripe key on the server, not a local setting — so it   */
+/* cannot say "test" while real money is moving.                         */
+/* ===================================================================== */
+(async function dbTestBanner(){
+  try{
+    const r = await fetch((typeof API !== 'undefined' ? API : (typeof API_URL !== 'undefined' ? API_URL : '')) + '/api/test-mode');
+    const t = await r.json();
+    if(!t || (!t.testMode && !t.warning)) return;
+    const bar = document.createElement('div');
+    const bad = !!t.warning;
+    bar.textContent = t.warning || t.banner;
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;'
+      + 'background:' + (bad ? '#b91c1c' : '#a16207') + ';color:#fff;'
+      + 'font:600 12.5px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;'
+      + 'padding:7px 14px;text-align:center;letter-spacing:.01em;'
+      + 'box-shadow:0 1px 6px rgba(0,0,0,.3)';
+    document.addEventListener('DOMContentLoaded', () => document.body.appendChild(bar));
+    if(document.body) document.body.appendChild(bar);
+    /* Push the app down so the banner never covers anything. */
+    const pad = document.createElement('style');
+    pad.textContent = 'body{padding-top:30px!important}';
+    document.head.appendChild(pad);
+  }catch(e){ /* no banner is better than a broken portal */ }
+})();
+
 const API = window.location.origin;
 /* ===================================================================== */
 /* THEMES                                                                */
@@ -583,6 +611,15 @@ let ME = JSON.parse(localStorage.getItem('db_portal_me') || 'null');
 let VIEW = 'home';
 let DASH = null, TIMELINE = [], MSGS = [], PAYMENTS = null, PLANS = [], PMS = [], REQS = [];
 let UNREAD = 0, NOTICE_DAYS = 30, STRIPE = null, STRIPE_PK = '';
+/* Set when an agreement has just been signed and the plan is waiting on a
+   payment method. Cleared the moment a method saves, or when the plan is
+   undone. Nothing else touches it. */
+let PENDING_START = null;
+
+/* undoPendingStart() was removed. It undid the signature when the payment
+   sheet closed, which only worked if the portal got a chance to call back —
+   close the tab and the signature stayed. The server now holds the signature
+   PROVISIONALLY until a card exists, so there is nothing left to undo. */
 let PENDING = null;   // {leadId, email} while a sign-in code is outstanding
 /* Set once a device is trusted, so the code step is skipped until it expires. */
 const DEVICE = localStorage.getItem('db_device_token') || '';
@@ -695,7 +732,23 @@ function dbInitSheetDrag(){
   });
 }
 
-function closeSheet(){ document.getElementById('sheet').classList.remove('on'); }
+function closeSheet(){
+  document.getElementById('sheet').classList.remove('on');
+  /* EVERY way out of the sheet lands here — the Cancel button, a backdrop tap,
+     Escape, and the drag-to-dismiss gesture. Putting the undo here rather than
+     on the Cancel button alone means there is no way to close the card form
+     and leave a signed plan with nothing behind it.
+     Deferred a tick so a close that happens as part of a SUCCESSFUL save can
+     clear PENDING_START first. */
+  /* No undo call needed: the signature is held provisionally on the server
+     until a payment method exists, so closing this sheet by ANY route — or
+     closing the tab entirely — already leaves the agreement reading
+     "Review & sign". Just refresh so the screen matches. */
+  if(PENDING_START){
+    PENDING_START = null;
+    loadDash().then(() => go('billing')).catch(() => {});
+  }
+}
 document.getElementById('sheet').addEventListener('click', e => { if(e.target.id === 'sheet') closeSheet(); });
 document.addEventListener('keydown', e => { if(e.key === 'Escape') closeSheet(); });
 
@@ -1945,8 +1998,11 @@ async function openSign(agreementId){
         if(d.needsPaymentMethod){
           toast('Signed. Add a payment method to start the plan.');
           go('billing');
-          /* addMethod('card') is the real function — openAddMethod does not
-             exist, and the typeof guard would have silently done nothing. */
+          /* Remember which plan is waiting on a card. If they close the sheet
+             without adding one, that plan is undone — signing and then backing
+             out is not a commitment, and the agreement should read unsigned
+             again rather than looking active with nothing behind it. */
+          PENDING_START = { planId: d.planId || null, agreementId: agreementId };
           setTimeout(() => {
             if(typeof addMethod === 'function') addMethod('card');
           }, 700);
@@ -2126,6 +2182,9 @@ async function addMethod(type){
       }
       const done = await post('/api/portal/payment-methods/confirm', {setupIntentId: intent.setupIntentId});
       closeSheet();
+      /* The plan has started — clear the flag before closeSheet() runs, or the
+         undo would fire on a save that actually succeeded. */
+      PENDING_START = null;
       toast(done.message || 'Payment method saved.');
       vBilling();
     };

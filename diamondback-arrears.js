@@ -86,17 +86,26 @@ function arrearsFor(plan, amount, asOf = new Date()) {
     const today = startOfDay(asOf);
     const periods = [];
 
-    // Where to start counting from. current_period_start is the reliable
-    // marker; fall back to the last charge, then the billing start, then the
-    // next charge date. Without any of them there is nothing to compute.
-    let cursor = plan.current_period_start || plan.last_charge_date
-              || plan.billing_start_date || plan.next_charge_date;
+    // ANCHOR ON next_charge_date — THE DATE MONEY IS DUE.
+    //
+    // This used to start from current_period_start, which is when a period
+    // OPENED, not when it is payable. On a brand-new plan created today with a
+    // first charge next month, current_period_start is today — so the walk
+    // found "today's period" already due and charged it the instant a card was
+    // added, a month early. Adding a payment method must never bring a charge
+    // forward; it only settles what was already due.
+    //
+    // next_charge_date is the earliest UNPAID due date: the charger advances it
+    // only after a successful charge, so on a plan three months behind it still
+    // points at the oldest missed date and the walk finds all three.
+    let cursor = plan.next_charge_date || plan.current_period_start
+              || plan.billing_start_date || plan.last_charge_date;
     if (!cursor) return { periods: [], total: 0, lateTotal: 0, grandTotal: 0, periodsMissed: 0 };
 
     cursor = new Date(cursor);
     if (isNaN(cursor)) return { periods: [], total: 0, lateTotal: 0, grandTotal: 0, periodsMissed: 0 };
 
-    // If the current period is already settled, arrears start at the NEXT one.
+    // If that exact period has already been settled, arrears start at the next.
     if (plan.current_period_paid_at) cursor = nextPeriod(plan, cursor);
 
     const rate = lateFeeRateFor(plan);

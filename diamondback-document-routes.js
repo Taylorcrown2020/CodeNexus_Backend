@@ -360,7 +360,16 @@ module.exports = function initDocumentRoutes({
         // ---- recurring plans ----------------------------------------------
         // Nothing is outstanding against an unsigned plan. That rule is already
         // enforced elsewhere for invoices; it applies here too.
-        const signedClause = hasSignedAt ? 'mp.signed_at IS NOT NULL' : 'TRUE';
+        // A provisional signature still owes: they typed their name, the first
+        // payment date passed, and no card arrived. Excluding those would make
+        // signing-and-stalling cost nothing.
+        // Only name provisional_signed_at if migration 015 has run — otherwise
+        // this whole query throws and the balance silently reads zero.
+        const hasProvisional = planCols.has('provisional_signed_at');
+        const signedClause = !hasSignedAt ? 'TRUE'
+            : hasProvisional
+                ? '(mp.signed_at IS NOT NULL OR mp.provisional_signed_at IS NOT NULL)'
+                : 'mp.signed_at IS NOT NULL';
         const intervalCol  = hasInterval ? "COALESCE(mp.interval_unit,'month')" : "'month'";
         const periodClause = hasPeriod
             ? 'mp.current_period_paid_at IS NULL'
@@ -397,7 +406,7 @@ module.exports = function initDocumentRoutes({
                       ON pmeth.id = COALESCE(mp.payment_method_id, l.default_payment_method_id)
                      AND pmeth.status = 'active'
               WHERE mp.lead_id = $1
-                AND mp.status IN ('active','past_due','pending_cancellation')
+                AND mp.status IN ('active','past_due','pending_cancellation','pending_payment_method')
                 AND ${signedClause}
               ORDER BY mp.next_charge_date NULLS LAST, mp.id`,
             [leadId], 'maintenance_plans');

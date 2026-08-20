@@ -79,6 +79,34 @@ function feeFor(baseAmount, rate = DEFAULT_LATE_FEE_RATE) {
 
 module.exports = function initLateFees({ pool }) {
 
+    // Which optional columns exist. Probed once, because naming a column that
+    // migration 015 has not added yet made the WHOLE assessment throw — and a
+    // missing migration must degrade, not silently stop charging late fees.
+    let _cols = null;
+    async function planCols() {
+        if (_cols) return _cols;
+        try {
+            const r = await pool.query(
+                `SELECT column_name FROM information_schema.columns
+                  WHERE table_name='maintenance_plans'`);
+            _cols = new Set(r.rows.map((x) => x.column_name));
+        } catch { _cols = new Set(); }
+        return _cols;
+    }
+
+    /** "signed" for arrears purposes: committed OR provisional. */
+    async function signedClause(prefix = 'mp.') {
+        const c = await planCols();
+        const hasSigned = c.has('signed_at');
+        const hasProv = c.has('provisional_signed_at');
+        if (!hasSigned && !hasProv) return 'TRUE';
+        if (hasSigned && hasProv) {
+            return `(${prefix}signed_at IS NOT NULL OR ${prefix}provisional_signed_at IS NOT NULL)`;
+        }
+        return hasSigned ? `${prefix}signed_at IS NOT NULL`
+                         : `${prefix}provisional_signed_at IS NOT NULL`;
+    }
+
     async function hasTable() {
         try {
             const r = await pool.query(
@@ -144,9 +172,15 @@ module.exports = function initLateFees({ pool }) {
                         mp.current_period_paid_at
                    FROM maintenance_plans mp
                    JOIN leads l ON l.id = mp.lead_id
-                  WHERE mp.status IN ('active','past_due','pending_cancellation')
+                  WHERE mp.status IN ('active','past_due','pending_cancellation',
+                                      'pending_payment_method')
                     AND mp.next_charge_date IS NOT NULL
                     AND mp.current_period_paid_at IS NULL
+                    -- A PROVISIONAL signature still owes: they typed their name
+                    -- and never added a card. If that meant no late fees,
+                    -- stalling would be free and holding the signature would
+                    -- achieve nothing.
+                    AND ${await signedClause('mp.')}
                     AND ($1::int IS NULL OR mp.lead_id = $1)`,
                 [leadId]);
 
@@ -283,8 +317,10 @@ module.exports = function initLateFees({ pool }) {
 
         const plans = await pool.query(
             `SELECT id, label, amount, next_charge_date FROM maintenance_plans
-              WHERE lead_id=$1 AND status IN ('active','past_due','pending_cancellation')
-                AND current_period_paid_at IS NULL AND next_charge_date IS NOT NULL`,
+              WHERE lead_id=$1
+                AND status IN ('active','past_due','pending_cancellation','pending_payment_method')
+                AND current_period_paid_at IS NULL AND next_charge_date IS NOT NULL
+                AND ${await signedClause('')}`,
             [leadId]).catch(() => ({ rows: [] }));
         plans.rows.forEach((p) => {
             if (isPastDue(p.next_charge_date, asOf) && Number(p.amount || 0) > 0) {

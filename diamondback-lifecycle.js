@@ -6437,11 +6437,23 @@ module.exports = function initLifecycle({
             //     early, which is the opposite of what this is meant to fix.
             // Everything else (the normal monthly plan, created to start now)
             // bills its first period straight away.
+            // AN EXPLICIT DATE IS AN EXPLICIT DATE — PAST OR FUTURE.
+            //
+            // This tested only for a FUTURE start, so a date deliberately set in
+            // the PAST fell through and got overwritten with CURRENT_DATE. That
+            // is why backdating a first payment to "a few days ago" silently
+            // became today, and why nothing then read as late: the due date had
+            // been moved to the present.
+            //
+            // The reset exists for a plan created with no start date at all,
+            // which should begin billing now. Whenever a date was actually
+            // given, it is honoured exactly as entered.
             const today = dateOnly(new Date());
+            const hasExplicitStart = !!(startExplicit && !isNaN(startExplicit));
             const startsInFuture =
-                (startExplicit && !isNaN(startExplicit) && dateOnly(startExplicit) > today)
+                (hasExplicitStart && dateOnly(startExplicit) > today)
                 || (dateOnly(firstCharge) && dateOnly(firstCharge) > today && unit === 'year');
-            if (!startsInFuture) {
+            if (!startsInFuture && !hasExplicitStart) {
                 await pool.query(
                     `UPDATE maintenance_plans
                         SET next_charge_date = CURRENT_DATE, billing_start_date = CURRENT_DATE

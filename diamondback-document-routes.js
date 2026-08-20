@@ -102,10 +102,33 @@ module.exports = function initDocumentRoutes({
             'SELECT * FROM agreement_signatures WHERE agreement_id = $1 ORDER BY id DESC LIMIT 1',
             [agreementId], 'agreement_signatures'))[0] || null;
 
-        if (sig) {
+        // ------------------------------------------------------------------
+        // A SIGNATURE ROW DOES NOT MEAN THE AGREEMENT IS SIGNED.
+        //
+        // This used to copy the signature onto the agreement and force
+        // status='signed' whenever a signature row existed. That was written
+        // when a row could only exist for a genuinely signed agreement.
+        //
+        // It can now exist for a PROVISIONAL signature — someone typed their
+        // name and never added a card. So the rendered document printed a
+        // "SIGNED — signed electronically by ..." block on an agreement the
+        // rest of the system correctly reports as unsigned, and the customer
+        // saw that when they came back to sign.
+        //
+        // sales_agreements.signed_at is the only authority. The reconcile below
+        // only fills a gap where the agreement IS signed but the timestamp went
+        // missing — it can no longer promote an unsigned one.
+        // ------------------------------------------------------------------
+        const genuinelySigned = !!ag.signed_at || ag.status === 'signed';
+        if (sig && genuinelySigned) {
             ag.signed_at = ag.signed_at || sig.signed_at;
             ag.signature_name = ag.signature_name || sig.signer_name;
-            if (ag.status !== 'signed') ag.status = 'signed';
+            ag.status = 'signed';
+        } else if (sig) {
+            // Provisional: keep it visibly unsigned, and say why.
+            ag.signed_at = null;
+            ag.signature_name = null;
+            ag.provisionalOnly = true;
         }
 
         return { agreement: ag, items, milestones, plan, signature: sig,

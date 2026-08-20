@@ -1288,7 +1288,19 @@ module.exports = function initLifecycle({
                                          THEN COALESCE(signed_at, NOW()) ELSE NULL END,
                         provisional_signed_at = COALESCE(provisional_signed_at, NOW()),
                         payment_method_id = COALESCE(payment_method_id, $3),
-                        status = CASE WHEN $3::int IS NOT NULL THEN 'active' ELSE 'pending_payment_method' END,
+                        -- 'pending_signature', NOT 'pending_payment_method'.
+                        --
+                        -- The portal derives its banner from STATUS, not from
+                        -- signed_at: 'pending_payment_method' renders
+                        -- "Signed — add a payment method". So leaving a
+                        -- provisional plan in that status made the screen say
+                        -- "Signed" no matter what signed_at held.
+                        --
+                        -- Without a card the plan genuinely is awaiting a
+                        -- signature that counts, so that is what the status
+                        -- says and that is what the customer sees.
+                        status = CASE WHEN $3::int IS NOT NULL
+                                      THEN 'active' ELSE 'pending_signature' END,
                         activated_at = CASE WHEN $3::int IS NOT NULL THEN COALESCE(activated_at, NOW()) ELSE activated_at END,
                         next_charge_date = $4,
                         updated_at = NOW()
@@ -5506,6 +5518,10 @@ module.exports = function initLifecycle({
             } : null,
             can_change_payment_method: true,
             can_cancel: ['active', 'past_due', 'pending_payment_method', 'pending_signature'].includes(p.status),
+            // The customer typed their name but there is no card, so nothing
+            // counts as signed yet. Surfaced so the portal can say exactly that
+            // instead of inferring from status.
+            provisionally_signed: !p.signed_at && !!p.provisional_signed_at,
             signed_at: p.signed_at,
             agreement_id: p.agreement_id,
         })).concat(crm.map((c) => ({

@@ -406,7 +406,8 @@ module.exports = function initDocumentRoutes({
                       ON pmeth.id = COALESCE(mp.payment_method_id, l.default_payment_method_id)
                      AND pmeth.status = 'active'
               WHERE mp.lead_id = $1
-                AND mp.status IN ('active','past_due','pending_cancellation','pending_payment_method')
+                AND mp.status IN ('active','past_due','pending_cancellation',
+                                  'pending_payment_method','pending_signature')
                 AND ${signedClause}
               ORDER BY mp.next_charge_date NULLS LAST, mp.id`,
             [leadId], 'maintenance_plans');
@@ -498,11 +499,17 @@ module.exports = function initDocumentRoutes({
             // Not billed, so not owed.
             if (endsBeforeCharge) return;
 
-            // A zero-amount period is not a payment. Prices of 0.00 are
-            // legitimate here (a free period, a bundled service), but counting
-            // one toward "2 payments due now" against a $0.51 balance is just
-            // a wrong sentence on the home screen.
-            if (amount <= 0) return;
+            // A ZERO-AMOUNT PLAN STILL SHOWS WHEN IT IS OVERDUE.
+            //
+            // Dropping it entirely was wrong: a $0.00 plan past its due date
+            // disappeared from the balance completely, so there was no sign
+            // anything was late — the customer and the admin both saw nothing.
+            //
+            // It owes $0.00, and 1.5% of $0.00 is $0.00, so no money is
+            // invented. But it appears as an overdue line so the state is
+            // visible, which is what a $0 test plan needs to be useful.
+            const zeroAmount = amount <= 0;
+            if (zeroAmount && !(dueDate && dueDate < today)) return;   // not due yet: hide it
 
             // EVERY unpaid period, not just this one. Missing three months has
             // to read as three months of money, or the balance quietly
@@ -513,6 +520,11 @@ module.exports = function initDocumentRoutes({
             monthlyDue.push({
                 ...entry,
                 outstanding: true,
+                zeroAmount,
+                zeroNote: zeroAmount
+                    ? 'This plan is set to $0.00, so nothing is charged and no late fee applies. '
+                    + 'Set a price on the plan if it should be billing.'
+                    : null,
                 // Distinguishes "this month isn't paid yet" from "this is
                 // late", so the UI can word it without alarming anyone.
                 overdue: !!(dueDate && dueDate < today),

@@ -173,7 +173,7 @@ module.exports = function initLateFees({ pool }) {
                    FROM maintenance_plans mp
                    JOIN leads l ON l.id = mp.lead_id
                   WHERE mp.status IN ('active','past_due','pending_cancellation',
-                                      'pending_payment_method')
+                                      'pending_payment_method','pending_signature')
                     AND mp.next_charge_date IS NOT NULL
                     AND mp.current_period_paid_at IS NULL
                     -- A PROVISIONAL signature still owes: they typed their name
@@ -318,12 +318,16 @@ module.exports = function initLateFees({ pool }) {
         const plans = await pool.query(
             `SELECT id, label, amount, next_charge_date FROM maintenance_plans
               WHERE lead_id=$1
-                AND status IN ('active','past_due','pending_cancellation','pending_payment_method')
+                AND status IN ('active','past_due','pending_cancellation',
+                               'pending_payment_method','pending_signature')
                 AND current_period_paid_at IS NULL AND next_charge_date IS NOT NULL
                 AND ${await signedClause('')}`,
             [leadId]).catch(() => ({ rows: [] }));
         plans.rows.forEach((p) => {
-            if (isPastDue(p.next_charge_date, asOf) && Number(p.amount || 0) > 0) {
+            // A $0.00 plan past its due date is still LATE — it just owes
+            // nothing. Excluding it made an overdue plan read as caught up,
+            // which is the opposite of useful.
+            if (isPastDue(p.next_charge_date, asOf)) {
                 reasons.push({
                     kind: 'plan', label: p.label, amount: Number(p.amount || 0),
                     dueDate: p.next_charge_date, daysLate: daysLate(p.next_charge_date, asOf),

@@ -956,27 +956,54 @@ module.exports = function initLifecycle({
         // still taken (it keeps the audit trail and stops duplicate email), but
         // it no longer decides whether the agreement is signed, and it is
         // RELEASED if the signature does not actually land.
+        // A PROVISIONAL signature is NOT "already signed".
+        //
+        // The signature row is kept when someone signs without a payment
+        // method, so `has_sig` alone said "already signed" the moment they came
+        // back to try again — and the reconcile below then flipped the
+        // agreement to signed, which is the exact state we were preventing.
+        //
+        // The test is signed_at: set means genuinely, finally signed. Provisional
+        // means they started and stopped, and they must be able to start again.
         const already = (await pool.query(
-            `SELECT sa.signed_at, sa.status, (sig.id IS NOT NULL) AS has_sig
+            `SELECT sa.signed_at, sa.status, sa.provisional_signed_at,
+                    (sig.id IS NOT NULL) AS has_sig
                FROM sales_agreements sa
                LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
               WHERE sa.id = $1`, [agreementId]
-        )).rows[0];
+        ).catch(() => pool.query(
+            // Pre-015: no provisional column, so fall back to the old shape.
+            `SELECT sa.signed_at, sa.status, NULL AS provisional_signed_at,
+                    (sig.id IS NOT NULL) AS has_sig
+               FROM sales_agreements sa
+               LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
+              WHERE sa.id = $1`, [agreementId]))).rows[0];
 
-        if (already && (already.has_sig || already.signed_at)) {
+        const provisionalOnly = already && !already.signed_at && !!already.provisional_signed_at;
+
+        if (already && already.signed_at) {
             // Genuinely signed already. Reconcile the row in case a previous
-            // run died between the signature and the status update, then report
-            // the true kind so the caller words its response correctly.
+            // run died between the signature and the status update.
             await pool.query(
                 `UPDATE sales_agreements
                     SET status = CASE WHEN status IN ('sent','draft') THEN 'signed' ELSE status END,
-                        signed_at = COALESCE(signed_at, NOW()), updated_at = NOW()
+                        updated_at = NOW()
                   WHERE id = $1`, [agreementId]
             ).catch(() => {});
             return {
                 signed: true, alreadySigned: true,
                 kind: a.agreement_kind || 'sla',
             };
+        }
+
+        if (provisionalOnly || (already && already.has_sig)) {
+            // They signed before but it never completed. Clear the old
+            // signature so this attempt records cleanly — the new one carries
+            // the current document hash, which is what has to be evidenced.
+            await pool.query('DELETE FROM agreement_signatures WHERE agreement_id = $1',
+                             [agreementId]).catch(() => {});
+            console.log(`[LIFECYCLE] agreement ${a.agreement_number} re-signed after an `
+                      + 'incomplete attempt — previous provisional signature replaced.');
         }
 
         // Not signed. Clear any stale claim from a previous failed attempt so

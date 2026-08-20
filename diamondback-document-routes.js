@@ -363,10 +363,12 @@ module.exports = function initDocumentRoutes({
         // A provisional signature still owes: they typed their name, the first
         // payment date passed, and no card arrived. Excluding those would make
         // signing-and-stalling cost nothing.
-        // Only name provisional_signed_at if migration 015 has run — otherwise
-        // this whole query throws and the balance silently reads zero.
+        // A plan whose first payment date has passed owes, signed or not —
+        // otherwise ignoring the agreement is the cheapest option available.
+        // LATE_FEES_REQUIRE_SIGNATURE=on restricts it to signed plans.
         const hasProvisional = planCols.has('provisional_signed_at');
-        const signedClause = !hasSignedAt ? 'TRUE'
+        const requireSig = String(process.env.LATE_FEES_REQUIRE_SIGNATURE || '').toLowerCase() === 'on';
+        const signedClause = (!requireSig || !hasSignedAt) ? 'TRUE'
             : hasProvisional
                 ? '(mp.signed_at IS NOT NULL OR mp.provisional_signed_at IS NOT NULL)'
                 : 'mp.signed_at IS NOT NULL';

@@ -25,7 +25,13 @@ const DEFAULT_LATE_FEE_RATE = Number(process.env.LATE_FEE_RATE || 0.015);   // 1
 // Days after the due date before a fee is charged. Zero means the day after.
 // A short grace period is worth having: a card that fails on the due date and
 // retries successfully the next morning should not leave a fee behind.
-const GRACE_DAYS = Number(process.env.LATE_FEE_GRACE_DAYS || 3);
+// NO GRACE PERIOD BY DEFAULT. Past the due date is late.
+//
+// This defaulted to 3 days, which I added without being asked. It meant a
+// payment two days overdue carried no fee and read as fine, which is exactly
+// the case that looked broken. Set LATE_FEE_GRACE_DAYS=3 if you ever want a
+// window for a card that fails and retries.
+const GRACE_DAYS = Number(process.env.LATE_FEE_GRACE_DAYS || 0);
 
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
@@ -94,8 +100,28 @@ module.exports = function initLateFees({ pool }) {
         return _cols;
     }
 
-    /** "signed" for arrears purposes: committed OR provisional. */
+    /**
+     * Which plans can accrue arrears and late fees.
+     *
+     * A plan whose first payment date has passed owes, whether or not the
+     * agreement was ever signed. That is deliberate and it is what was asked
+     * for: an agreement sent, a first payment date set, and neither a signature
+     * nor a payment by that date is exactly the case the late fee exists to
+     * discourage. Requiring a signature first meant ignoring the agreement was
+     * the cheapest thing a customer could do.
+     *
+     * Set LATE_FEES_REQUIRE_SIGNATURE=on to charge only signed and provisionally
+     * signed plans.
+     *
+     * WORTH KNOWING ONCE: a fee on a never-signed agreement is harder to
+     * enforce than one on a signed plan — there is no contract to point at. It
+     * is fine as a prompt to sign or cancel; treat an unsigned balance as
+     * something to chase rather than something to sue over.
+     */
     async function signedClause(prefix = 'mp.') {
+        if (String(process.env.LATE_FEES_REQUIRE_SIGNATURE || '').toLowerCase() !== 'on') {
+            return 'TRUE';
+        }
         const c = await planCols();
         const hasSigned = c.has('signed_at');
         const hasProv = c.has('provisional_signed_at');

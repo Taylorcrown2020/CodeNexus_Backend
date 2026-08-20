@@ -32,7 +32,13 @@ const ANNUAL_LATE_FEE_RATE  = Number(process.env.ANNUAL_LATE_FEE_RATE || 0.03); 
 
 // Days after a due date before it counts as late. A card that fails and retries
 // successfully the next morning should not leave a fee behind.
-const GRACE_DAYS = Number(process.env.LATE_FEE_GRACE_DAYS || 3);
+// NO GRACE PERIOD BY DEFAULT. Past the due date is late.
+//
+// This defaulted to 3 days, which I added without being asked. It meant a
+// payment two days overdue carried no fee and read as fine, which is exactly
+// the case that looked broken. Set LATE_FEE_GRACE_DAYS=3 if you ever want a
+// window for a card that fails and retries.
+const GRACE_DAYS = Number(process.env.LATE_FEE_GRACE_DAYS || 0);
 
 // Never walk further back than this. A plan with a corrupt or ancient start
 // date must not generate hundreds of periods and a balance nobody can explain.

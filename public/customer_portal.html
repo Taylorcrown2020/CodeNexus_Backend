@@ -1017,6 +1017,45 @@ function fail(title, msg, retryName){
 /* ============================================================================
    HOME
    ============================================================================ */
+/* ===================================================================== */
+/* SHOW FOUR, THEN "SEE ALL"                                             */
+/*                                                                       */
+/* A customer with forty receipts should not scroll past forty rows to   */
+/* reach the next section. Four is enough to see the recent ones and     */
+/* know the rest are there.                                              */
+/*                                                                       */
+/* The full list opens in the same sheet rather than a separate page, so */
+/* nothing is lost and Back always works.                                */
+/* ===================================================================== */
+const PREVIEW_N = 4;
+const FULL_LISTS = {};
+
+function listPreview(key, title, rows, renderRow, emptyText){
+  FULL_LISTS[key] = { title: title, rows: rows, render: renderRow };
+  const shown = rows.slice(0, PREVIEW_N);
+  return '<div class="card">' +
+    '<div class="card-h"><h3>' + esc(title) + '</h3>' +
+      (rows.length ? '<span class="tag grey">' + rows.length + '</span>' : '') + '</div>' +
+    (rows.length
+      ? shown.map(renderRow).join('') +
+        (rows.length > PREVIEW_N
+          ? '<button class="btn btn-ghost btn-block" style="margin-top:10px" ' +
+            'onclick="openFullList(\'' + key + '\')">See all ' + rows.length + '</button>'
+          : '')
+      : '<p class="empty" style="padding:18px 0">' + esc(emptyText) + '</p>') +
+  '</div>';
+}
+
+function openFullList(key){
+  const l = FULL_LISTS[key];
+  if(!l) return;
+  sheet('<h2 class="sheet-h">' + esc(l.title) + '</h2>' +
+    '<p class="sheet-sub">' + l.rows.length + ' in total.</p>' +
+    '<div class="card">' + l.rows.map(l.render).join('') + '</div>' +
+    '<div class="sheet-actions"><button class="btn btn-ghost" onclick="closeSheet()">Done</button></div>');
+}
+
+
 async function vHome(){
   M().innerHTML = loading('Home', 'Your account at a glance.');
   try{ await loadDash(); }
@@ -1296,8 +1335,18 @@ async function vBilling(){
         (Number(t.refunded) > 0 ? '<div class="r"><span>Refunded</span><b class="neg">&minus;' + money(t.refunded) + '</b></div>' : '') +
         '<div class="r total"><span>Net</span><span>' + money(t.net) + '</span></div>' +
       '</div>' +
-      (((PAYMENTS && PAYMENTS.payments) || []).length ? PAYMENTS.payments.map(payRow).join('')
-        : '<p class="empty" style="padding:18px 0">No payments yet. Receipts appear here automatically.</p>') +
+      /* Same four-then-see-all as Docs, so a long payment history does not
+         bury the sections under it. */
+      (function(){
+        const rows = ((PAYMENTS && PAYMENTS.payments) || []);
+        FULL_LISTS['payments'] = { title:'Payment history', rows: rows, render: payRow };
+        if(!rows.length) return '<p class="empty" style="padding:18px 0">No payments yet. Receipts appear here automatically.</p>';
+        return rows.slice(0, PREVIEW_N).map(payRow).join('') +
+          (rows.length > PREVIEW_N
+            ? '<button class="btn btn-ghost btn-block" style="margin-top:10px" ' +
+              'onclick="openFullList(\'payments\')">See all ' + rows.length + '</button>'
+            : '');
+      })() +
     '</div>';
 }
 
@@ -1524,6 +1573,7 @@ async function vProject(){
 /* ============================================================================
    DOCS — signed agreements land here automatically
    ============================================================================ */
+
 async function vDocs(){
   M().innerHTML = loading('Receipts &amp; Docs', 'Agreements, receipts and requests.');
   try{
@@ -1547,17 +1597,10 @@ async function vDocs(){
       '<div class="card-h"><h3>Awaiting your signature</h3><span class="tag green">' + pending.length + '</span></div>' +
       pending.map(agRow).join('') + '</div>' : '') +
 
-    '<div class="card">' +
-      '<div class="card-h"><h3>Signed agreements</h3>' +
-        (signed.length ? '<span class="tag grey">' + signed.length + '</span>' : '') + '</div>' +
-      (signed.length ? signed.map(agRow).join('')
-        : '<p class="empty" style="padding:18px 0">Nothing signed yet. Signed agreements are filed here automatically.</p>') +
-    '</div>' +
+    listPreview('signed', 'Signed agreements', signed, agRow,
+      'Nothing signed yet. Signed agreements are filed here automatically.') +
 
-    '<div class="card">' +
-      '<div class="card-h"><h3>Receipts</h3></div>' +
-      (receipts.length ? receipts.map(payRow).join('') : '<p class="empty" style="padding:18px 0">No receipts yet.</p>') +
-    '</div>' +
+    listPreview('receipts', 'Receipts', receipts, payRow, 'No receipts yet.') +
 
     '<div class="card">' +
       '<div class="card-h"><h3>Service requests</h3>' +

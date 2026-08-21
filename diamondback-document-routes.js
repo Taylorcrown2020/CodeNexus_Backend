@@ -631,8 +631,10 @@ module.exports = function initDocumentRoutes({
             outstanding: true,
             overdue: true,          // by definition
             autopay: false,
-            note: `${(Number(f.rate || 0) * 100).toFixed(2).replace(/\.?0+$/, '')}% of `
-                + `${money(f.base_amount)}, applied because the payment due `
+            // A flat fee now, so the old "1.5% of $450.00" wording would be
+            // wrong — and a customer checking the arithmetic would find it
+            // didn't add up.
+            note: `Flat late fee, applied because the payment due `
                 + `${prettyDate(f.due_date) || 'earlier'} was not received on time.`,
         }));
 

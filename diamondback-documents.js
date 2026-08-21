@@ -335,8 +335,8 @@ const CLAUSES = {
         body: [
             `Each charge is taken automatically on its due date. There is no invoice, no payment terms and no grace for the charge itself — the amount is due, in full, on that date.`,
             `A payment is LATE only if the due date passes and the amount is still unpaid, which normally means no valid payment method was on file or the charge was declined. An amount that is owed but whose due date has not yet arrived is not late and carries no fee.`,
-            `If a payment is late, a late fee of one and one-half percent (1.5%) of the amount due is added, or the maximum permitted by {{STATE_FULL}} law if lower. A further 1.5% is added for each additional {{INTERVAL_NOUN}} period that the amount remains unpaid. Late fees are compensation for the cost of chasing and carrying an unpaid balance, not a penalty.`,
-            `We allow {{GRACE_DAYS}} days after the due date before a late fee is applied, so that a card which fails and retries successfully does not incur one.`,
+            `If a payment is late, a late fee of {{LATE_FEE}} is added to the amount owed. A further {{LATE_FEE}} is added for each additional {{INTERVAL_NOUN}} period that the amount remains unpaid. Late fees are a fixed amount, not a percentage, and are compensation for the cost of chasing and carrying an unpaid balance rather than a penalty.`,
+            `A payment is late from the day after its due date. There is no grace period.`,
             `If any amount remains unpaid fifteen (15) days after its due date we may suspend the service without notice and without liability for any consequence of that suspension, including downtime, lost data, missed updates or lost business. Service resumes when the account is brought current, and we may require the balance and all fees to be settled before it does.`,
             `If a payment is reversed, charged back or returned unpaid, you are responsible for the original amount plus any fee our bank or processor charges us, plus the late fee, and we may require a different payment method going forward.`,
             `You remain responsible for our costs of collection, including reasonable attorneys' fees and any collection agency charges.`,
@@ -415,11 +415,12 @@ const CLAUSES = {
         heading: 'Term, renewal and cancellation',
         body: [
             `This plan begins on {{AUTOPAY_START}} and renews automatically for successive one-year periods until cancelled.`,
-            `THERE IS NO NOTICE PERIOD ON THIS PLAN. Because it is an annual commitment, cancelling does not run down a notice period — it settles the year and ends at the end of it.`,
-            `IF YOU HAVE ALREADY PAID FOR THE CURRENT YEAR, nothing further is owed. Your cancellation is recorded and the plan ends the day before your next renewal date. You keep the service for every day you have paid for.`,
-            `IF THE CURRENT YEAR IS NOT YET PAID, cancelling settles it in full at that point. That payment covers a complete year, and the plan ends the day before the following renewal date. You are paying for a year and you receive a year.`,
-            `In either case the end date is the day BEFORE a renewal date, never the renewal date itself, so no further charge is ever taken after you cancel.`,
+            `THERE IS NO CANCELLATION NOTICE PERIOD ON THIS PLAN. You may cancel at any time from your customer portal or by emailing {{COMPANY_EMAIL}}, and nothing further is charged from that point.`,
+            `IF YOU CANCEL BEFORE YOUR RENEWAL DATE, the renewal simply does not happen. You are not charged for the coming year and you owe nothing for it.`,
+            `IF YOU HAVE ALREADY PAID FOR THE CURRENT YEAR, you keep the service through to the day before your next renewal date — you bought that year and it is yours. Nothing is refunded and nothing further is charged.`,
+            `The end date is always the day BEFORE a renewal date, never the renewal date itself, so no charge can be taken after you cancel.`,
             `Fees already paid are non-refundable, including where you stop using the service part-way through a year. We do not pro-rate and we do not refund unused months.`,
+            `Amounts already owed for periods that have passed remain payable, together with any late fee of {{LATE_FEE}} that has been added to them. Cancelling ends the plan; it does not clear a balance for service already provided.`,
             `We may terminate this plan on thirty (30) days' notice, or immediately for non-payment. If we terminate for a reason other than non-payment, we will refund the unused whole months of the year you have paid for.`,
             `Where this plan covers a domain name or another item that must be renewed with a third party, cancelling means we stop renewing it. Anything registered in our name will be transferred to you on request, provided the account is settled; if you take no action, it may lapse or expire, and we are not responsible for that.`,
             `After cancellation, reinstating the plan requires signing a new reinstatement agreement, and may be subject to our then-current pricing. A lapsed domain may not be recoverable at the original price, or at all.`,
@@ -530,13 +531,16 @@ function buildAgreementDocument({ agreement, items = [], milestones = [], plan =
         // sentence, chosen by cadence, so the autopay clause cannot promise a
         // 30-day notice on a plan that does not have one.
         CANCEL_EFFECT_SENTENCE: isAnnual
-            ? 'There is no notice period: cancelling settles the current year if it is not '
-              + 'already paid, and the plan then ends the day before your next renewal date. '
-              + 'No further charge is taken after that.'
+            ? 'There is no notice period. Cancelling before your renewal date means the renewal '
+              + 'simply does not happen and you are not charged for the coming year. If the '
+              + 'current year is already paid, you keep it through to the day before renewal.'
             : `Cancellation takes effect ${noticeDays} days after we receive your request; charges `
               + 'falling due within that notice period remain payable and service continues until '
               + 'the cancellation date.',
-        GRACE_DAYS:           String(process.env.LATE_FEE_GRACE_DAYS || 3),
+        GRACE_DAYS:           String(process.env.LATE_FEE_GRACE_DAYS || 0),
+        // Stated in the agreement so the figure the customer signs and the
+        // figure the system charges cannot drift apart.
+        LATE_FEE:             money(Number(process.env.LATE_FEE_FLAT || 14.99)),
         SUPPORT_HOURS:        process.env.PLAN_SUPPORT_HOURS || 'two (2) hours',
         LATE_FEE_PCT:         ((Number(process.env.LATE_FEE_RATE || 0.015)) * 100)
                                   .toFixed(2).replace(/\.?0+$/, ''),

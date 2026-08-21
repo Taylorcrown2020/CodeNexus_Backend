@@ -1642,14 +1642,25 @@ module.exports = function initPortal({
                 // didn't land showed "signed" to staff and "Review & sign" to
                 // the customer — the same agreement, two answers.
                 const saRes = await pool.query(
+                    // sa.signed_at ONLY. The old version fell back to the
+                    // signature row and promoted the status to 'signed'
+                    // whenever one existed — which is true for a PROVISIONAL
+                    // signature, so a plan the customer never paid for showed
+                    // as signed here too. Third place this pattern hid.
+                    //
+                    // Voided agreements are excluded: they were terminated
+                    // before anyone signed, so there is nothing to sign and
+                    // nothing to keep. A TERMINATED plan that WAS signed keeps
+                    // its agreement — the customer should still be able to read
+                    // what they agreed to.
                     `SELECT sa.*,
-                            COALESCE(sa.signed_at, sig.signed_at) AS signed_at,
-                            CASE WHEN sig.id IS NOT NULL AND sa.status IN ('sent','draft')
-                                 THEN 'signed' ELSE sa.status END AS status,
-                            sig.signer_name
+                            sa.signed_at AS signed_at,
+                            sa.status AS status,
+                            COALESCE(sa.signature_name, sig.signer_name) AS signer_name
                        FROM sales_agreements sa
                        LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
                       WHERE sa.lead_id = $1
+                        AND COALESCE(sa.status,'') <> 'void'
                       ORDER BY sa.created_at DESC`,
                     [clientId]
                 );
@@ -1663,7 +1674,8 @@ module.exports = function initPortal({
                 console.warn('[PORTAL] agreement signature join failed, falling back:', e.message);
                 try {
                     const plain = await pool.query(
-                        'SELECT * FROM sales_agreements WHERE lead_id = $1 ORDER BY created_at DESC',
+                        `SELECT * FROM sales_agreements WHERE lead_id = $1
+                           AND COALESCE(status,'') <> 'void' ORDER BY created_at DESC`,
                         [clientId]
                     );
                     salesAgreements = plain.rows;

@@ -330,8 +330,26 @@ module.exports = function initLifecycle({
     // SITE_URL is declared further down this same scope; referencing it here
     // would be a temporal-dead-zone error if shell() were ever called during
     // init, so LOGO_URL stands on its own.
+    // ------------------------------------------------------------------
+    // THE LOGO IN EMAILS.
+    //
+    // public/ is served at the site root, so a file at public/assets/logo.png
+    // is reachable at https://<site>/assets/logo.png. This pointed at /images/,
+    // which does not exist — so every email carried a broken image.
+    //
+    // It must be an ABSOLUTE https URL. An email client has no idea what your
+    // server is; a relative path renders as nothing.
+    //
+    // Set LOGO_URL to override, or LOGO_FILE to just name the file in
+    // public/assets.
+    // ------------------------------------------------------------------
+    const SITE = String(process.env.SITE_URL || 'https://diamondbackcoding.com').replace(/\/+$/, '');
     const LOGO_URL = process.env.LOGO_URL
-        || `${process.env.SITE_URL || 'https://diamondbackcoding.com'}/images/diamondback-logo-email.png`;
+        || `${SITE}/assets/${process.env.LOGO_FILE || 'logo.png'}`;
+
+    console.log(`[LIFECYCLE] Email logo: ${LOGO_URL}`);
+    console.log('[LIFECYCLE] If that 404s, set LOGO_FILE to the actual filename in '
+              + 'public/assets, or LOGO_URL to the full address.');
 
     function shell(title, bodyHtml, cta) {
         return `<!DOCTYPE html>
@@ -348,6 +366,7 @@ module.exports = function initLifecycle({
     <tr><td style="padding:0 4px 18px;">
       <a href="${process.env.SITE_URL || 'https://diamondbackcoding.com'}" style="text-decoration:none;">
         <img src="${LOGO_URL}" alt="Diamondback Coding" width="188" height="38"
+             onerror="this.style.display='none'"
              style="display:block;border:0;outline:none;text-decoration:none;
                     width:188px;max-width:188px;height:auto;">
       </a>
@@ -1013,8 +1032,21 @@ module.exports = function initLifecycle({
             [`sla_signed:agreement:${agreementId}`]
         ).catch(() => {});
 
-        await claimStage(a.lead_id, 'sla_signed', `sla_signed:agreement:${agreementId}`,
-                         { entityType: 'agreement', entityId: agreementId });
+        // Held back for a provisional signature. Claiming 'sla_signed' is what
+        // drives the signed-document notifications, and nothing has been signed
+        // yet — a text saying so arriving as the customer backs out of the
+        // payment sheet is wrong and confusing. It is claimed when the
+        // signature actually commits, in commitProvisionalSignatures().
+        const _needsMethodFirstEarly = ['maintenance', 'subscription'].includes(a.agreement_kind);
+        const _methodOnFileEarly = _needsMethodFirstEarly
+            ? (await pool.query(
+                `SELECT 1 FROM payment_methods WHERE lead_id=$1 AND status='active' LIMIT 1`,
+                [a.lead_id])).rows.length > 0
+            : true;
+        if (_methodOnFileEarly) {
+            await claimStage(a.lead_id, 'sla_signed', `sla_signed:agreement:${agreementId}`,
+                             { entityType: 'agreement', entityId: agreementId });
+        }
 
         const lead = (await pool.query('SELECT * FROM leads WHERE id=$1', [a.lead_id])).rows[0];
         const name = signerName || a.customer_name || (lead && lead.name) || 'Customer';
@@ -1126,6 +1158,12 @@ module.exports = function initLifecycle({
                 `SELECT 1 FROM payment_methods WHERE lead_id=$1 AND status='active' LIMIT 1`,
                 [a.lead_id])).rows.length > 0
             : true;
+
+        // A provisional signature must not fire the "document signed"
+        // notifications. Nothing has been signed yet, and a text saying so
+        // arriving as the customer backs out of the payment sheet is both wrong
+        // and confusing.
+        const suppressSignedNotifications = needsMethodFirst && !methodOnFile;
 
         if (needsMethodFirst && !methodOnFile) {
             await pool.query(
@@ -1348,7 +1386,10 @@ module.exports = function initLifecycle({
                     .catch((e) => { console.warn('[LIFECYCLE] first charge:', e.message); return null; });
             }
 
-            await notify({
+            // Nothing was signed if there is no card, so no signed-document
+            // message goes out. commitProvisionalSignatures() sends it when the
+            // signature actually counts.
+            if (!suppressSignedNotifications) await notify({
                 lead, kind: 'maintenance_agreement',
                 subject: ready
                     ? `${plan.label} is active`
@@ -1367,7 +1408,7 @@ module.exports = function initLifecycle({
                 cta: { url: PORTAL_URL, label: ready ? 'View your plan' : 'Add a payment method' },
             });
 
-            await adminNotify({
+            if (!suppressSignedNotifications) await adminNotify({
                 kind: 'maintenance_signed',
                 title: `${lead.name} signed ${plan.label}`,
                 body: ready
@@ -1841,6 +1882,30 @@ module.exports = function initLifecycle({
                                 updated_at = NOW()
                           WHERE id = $1`, [plan.agreement_id]);
                 }
+                // NOW it is signed, so this is when the signed-document
+                // notifications belong.
+                await claimStage(plan.lead_id, 'sla_signed',
+                                 `sla_signed:agreement:${plan.agreement_id}`,
+                                 { entityType: 'agreement', entityId: plan.agreement_id })
+                    .catch(() => {});
+
+                const lead = (await pool.query('SELECT * FROM leads WHERE id=$1',
+                                               [plan.lead_id])).rows[0];
+                if (lead) {
+                    await notify({
+                        lead, kind: 'maintenance_agreement',
+                        subject: `${plan.label} is active`,
+                        bodyHtml:
+                            `<p style="margin:0 0 12px">Your <strong style="color:#0d0f12">${plan.label}</strong> `
+                            + `plan is signed and active. A signed copy is in your portal.</p>`
+                            + `<p style="margin:0">First payment `
+                            + `${prettyDate(plan.next_charge_date) || 'on the scheduled date'}.</p>`,
+                        smsText: `Diamondback Coding: your ${plan.label} plan is signed and active.`,
+                        channels: ['email', 'sms', 'portal'],
+                        cta: { url: PORTAL_URL, label: 'View your plan' },
+                    }).catch((e) => console.warn('[COMMIT] notify:', e.message));
+                }
+
                 console.log(`[LIFECYCLE] plan ${plan.id} committed — card added, `
                           + 'agreement now genuinely signed and active.');
             }
@@ -4702,27 +4767,20 @@ module.exports = function initLifecycle({
                 || (!!plan.last_charge_date && nextCharge && nextCharge > new Date());
 
             if (isAnnualPlan) {
-                // ---- ANNUAL ---------------------------------------------
-                const settleMethodA = await methodForPlan(plan);
-
+                // ---- ANNUAL: NO NOTICE, NO SETTLEMENT --------------------
+                //
+                // Cancelling before the renewal date simply cancels. Nothing is
+                // owed and nothing is charged.
+                //
+                // The previous version billed the upcoming year on the way out.
+                // That is a hard thing to defend: taking a year's money from
+                // someone at the moment they tell you they are leaving. If they
+                // have already paid for the current year they keep it to the
+                // day before renewal, because they bought it.
                 if (periodIsPaid && nextCharge && !isNaN(nextCharge)) {
-                    // Already paid for this year. Nothing further is owed and
-                    // they keep it to the day before renewal.
                     effective = dayBefore(nextCharge);
-                } else if (nextCharge && !isNaN(nextCharge)) {
-                    // Not paid. Settle the year in full now; that buys them
-                    // through to the day before the FOLLOWING renewal.
-                    lines.push({
-                        kind: 'annual_settlement',
-                        label: `${plan.label} — ${prettyDate(nextCharge)} (full year)`,
-                        amount: planChargeTotal(plan, settleMethodA),
-                        date: dateOnly(nextCharge),
-                    });
-                    const followingRenewal = nextChargeFor(plan, nextCharge);
-                    effective = followingRenewal ? dayBefore(followingRenewal) : dayBefore(nextCharge);
                 } else {
-                    // No renewal date on record — end it today rather than
-                    // inventing a year of service nobody can point at.
+                    // Not paid for the coming year — it simply never starts.
                     effective = new Date();
                 }
             } else {
@@ -6413,6 +6471,49 @@ module.exports = function initLifecycle({
             if (!plan) return res.status(404).json({ success: false, message: 'Plan not found.' });
             if (plan.status === 'cancelled') {
                 return res.status(409).json({ success: false, message: 'That plan is already cancelled.' });
+            }
+
+            // ------------------------------------------------------------
+            // NEVER SIGNED -> VOID IT.
+            //
+            // Cancelling an agreement nobody ever agreed to leaves a dead
+            // document sitting in the customer's portal asking to be signed.
+            // Voiding removes it from their view entirely: there is nothing to
+            // sign, nothing to cancel and nothing owed.
+            // ------------------------------------------------------------
+            if (!plan.signed_at) {
+                await pool.query(
+                    `UPDATE maintenance_plans
+                        SET status='cancelled', next_charge_date=NULL,
+                            provisional_signed_at=NULL, updated_at=NOW()
+                      WHERE id=$1`, [plan.id]);
+
+                if (plan.agreement_id) {
+                    await pool.query(
+                        `UPDATE sales_agreements
+                            SET status='void', signed_at=NULL, signature_name=NULL,
+                                provisional_signed_at=NULL, provisional_signer_name=NULL,
+                                updated_at=NOW()
+                          WHERE id=$1`, [plan.agreement_id]).catch(() => {});
+                    await pool.query('DELETE FROM agreement_signatures WHERE agreement_id=$1',
+                                     [plan.agreement_id]).catch(() => {});
+                }
+
+                // Nothing was ever provided, so nothing is owed.
+                await pool.query(
+                    `UPDATE late_fees
+                        SET status='waived', waived_at=NOW(), waived_by='system',
+                            waive_reason='Plan voided before it was ever signed', updated_at=NOW()
+                      WHERE maintenance_plan_id=$1 AND status='outstanding'`, [plan.id]).catch(() => {});
+
+                console.log(`[TERMINATE] plan ${plan.id} VOIDED — never signed. `
+                          + 'Removed from the customer portal.');
+
+                return res.json({
+                    success: true, voided: true, planId: plan.id,
+                    message: `${plan.label} voided. It was never signed, so nothing is owed and `
+                           + 'it no longer appears in their portal.',
+                });
             }
 
             const endOfPeriod = !!b.endOfPeriod;

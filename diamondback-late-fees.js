@@ -20,7 +20,8 @@
 // twice cannot stack fees — but assessLateFees() is written not to try.
 // ============================================================================
 
-const DEFAULT_LATE_FEE_RATE = Number(process.env.LATE_FEE_RATE || 0.015);   // 1.5%
+// Flat, not a percentage — see diamondback-arrears.js for why.
+const LATE_FEE_FLAT = Number(process.env.LATE_FEE_FLAT || 14.99);
 
 // Days after the due date before a fee is charged. Zero means the day after.
 // A short grace period is worth having: a card that fails on the due date and
@@ -77,10 +78,9 @@ function periodKey(kind, id, dueDate) {
 }
 
 /** 1.5% of what is owed. */
-function feeFor(baseAmount, rate = DEFAULT_LATE_FEE_RATE) {
-    const base = Number(baseAmount || 0);
-    if (base <= 0) return 0;          // nothing owed, nothing to charge on
-    return round2(base * rate);
+/** The flat fee. The base amount no longer affects it. */
+function feeFor(_baseAmount, flat = LATE_FEE_FLAT) {
+    return round2(flat);
 }
 
 module.exports = function initLateFees({ pool }) {
@@ -172,7 +172,7 @@ module.exports = function initLateFees({ pool }) {
             for (const inv of invoices.rows) {
                 if (inv.exempt) continue;
                 if (!isPastDue(inv.due_date, asOf)) continue;      // outstanding, not late
-                const amount = feeFor(inv.total_amount);
+                const amount = feeFor(null);
                 if (amount <= 0) continue;
                 const key = periodKey('invoice', inv.id, inv.due_date);
                 const ins = await pool.query(
@@ -181,7 +181,7 @@ module.exports = function initLateFees({ pool }) {
                      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
                      ON CONFLICT DO NOTHING
                      RETURNING *`,
-                    [inv.lead_id, inv.id, inv.total_amount, DEFAULT_LATE_FEE_RATE, amount,
+                    [inv.lead_id, inv.id, inv.total_amount, LATE_FEE_FLAT, amount,
                      inv.due_date, key,
                      `Late fee on invoice ${inv.invoice_number}`]);
                 if (ins.rows[0]) created.push(ins.rows[0]);
@@ -221,7 +221,6 @@ module.exports = function initLateFees({ pool }) {
 
             for (const p of plans.rows) {
                 if (p.exempt) continue;
-                if (Number(p.amount || 0) <= 0) continue;   // a $0 plan owes nothing
 
                 const owed = arrears.arrearsFor(p, Number(p.amount || 0), asOf);
                 let markedPastDue = false;
@@ -237,7 +236,7 @@ module.exports = function initLateFees({ pool }) {
                          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
                          ON CONFLICT DO NOTHING
                          RETURNING *`,
-                        [p.lead_id, p.id, p.amount, period.lateFeeRate, period.lateFee,
+                        [p.lead_id, p.id, p.amount, period.lateFeeAmount, period.lateFee,
                          period.dueDate, key,
                          `Late fee — ${p.label} (${p.interval_unit === 'year' ? 'annual' : 'monthly'}) `
                          + `for ${period.dueDate}`]);
@@ -382,7 +381,7 @@ module.exports = function initLateFees({ pool }) {
     }
 
     return {
-        DEFAULT_LATE_FEE_RATE, GRACE_DAYS,
+        LATE_FEE_FLAT, GRACE_DAYS,
         isPastDue, daysLate, feeFor, periodKey,
         assessLateFees, outstandingFees, waiveFee, waiveAllForLead, accountStanding,
     };
@@ -392,5 +391,5 @@ module.exports.isPastDue = isPastDue;
 module.exports.daysLate = daysLate;
 module.exports.feeFor = feeFor;
 module.exports.periodKey = periodKey;
-module.exports.DEFAULT_LATE_FEE_RATE = DEFAULT_LATE_FEE_RATE;
+module.exports.LATE_FEE_FLAT = LATE_FEE_FLAT;
 module.exports.GRACE_DAYS = GRACE_DAYS;

@@ -27,8 +27,13 @@
 // environment, so neither is baked in.
 // ============================================================================
 
-const MONTHLY_LATE_FEE_RATE = Number(process.env.LATE_FEE_RATE || 0.015);          // 1.5%
-const ANNUAL_LATE_FEE_RATE  = Number(process.env.ANNUAL_LATE_FEE_RATE || 0.03);    // 3%
+// A FLAT FEE, NOT A PERCENTAGE.
+//
+// This was 1.5% monthly / 3% annually. On a $1.00 plan that is $0.02 — invisible
+// and pointless — and on a $2,000 plan it is $30, which is a different kind of
+// charge entirely. A flat amount is the same for everyone, easy to state in the
+// agreement, and easy for a customer to check.
+const LATE_FEE_FLAT = Number(process.env.LATE_FEE_FLAT || 14.99);
 
 // Days after a due date before it counts as late. A card that fails and retries
 // successfully the next morning should not leave a fee behind.
@@ -70,9 +75,14 @@ function nextPeriod(plan, from) {
         : addMonth(from, plan.billing_day);
 }
 
-function lateFeeRateFor(plan) {
-    if (plan.late_fee_rate != null) return Number(plan.late_fee_rate);
-    return plan.interval_unit === 'year' ? ANNUAL_LATE_FEE_RATE : MONTHLY_LATE_FEE_RATE;
+/**
+ * The flat late fee for this plan. `late_fee_rate` on the plan still overrides
+ * it — stored as an AMOUNT now, not a rate — so a single customer can be put on
+ * a different figure without touching code.
+ */
+function lateFeeFor(plan) {
+    if (plan && plan.late_fee_rate != null) return Number(plan.late_fee_rate);
+    return LATE_FEE_FLAT;
 }
 
 /**
@@ -114,7 +124,7 @@ function arrearsFor(plan, amount, asOf = new Date()) {
     // If that exact period has already been settled, arrears start at the next.
     if (plan.current_period_paid_at) cursor = nextPeriod(plan, cursor);
 
-    const rate = lateFeeRateFor(plan);
+    const fee = lateFeeFor(plan);
     const per = round2(amount);
     let guard = 0;
 
@@ -131,8 +141,12 @@ function arrearsFor(plan, amount, asOf = new Date()) {
             amount: per,
             // A fee per missed period. One fee for six missed months
             // undercharges by exactly as much as showing one month did.
-            lateFee: isLate && per > 0 ? round2(per * rate) : 0,
-            lateFeeRate: rate,
+            //
+            // Charged even on a $0.00 plan: being late is what earns it, not
+            // the size of the payment. A $0 plan that is late still costs us
+            // the chasing.
+            lateFee: isLate ? round2(fee) : 0,
+            lateFeeAmount: fee,
             isLate,
             daysLate,
         });
@@ -153,7 +167,7 @@ function arrearsFor(plan, amount, asOf = new Date()) {
         // True when the walk hit the ceiling — the figure is a floor, not the
         // whole debt, and saying so beats quietly under-reporting it.
         capped: guard >= MAX_PERIODS,
-        rate,
+        fee,
     };
 }
 
@@ -168,6 +182,6 @@ function arrearsLabel(plan, arrears) {
 }
 
 module.exports = {
-    MONTHLY_LATE_FEE_RATE, ANNUAL_LATE_FEE_RATE, GRACE_DAYS, MAX_PERIODS,
-    arrearsFor, arrearsLabel, lateFeeRateFor, nextPeriod, addMonth, addYear,
+    LATE_FEE_FLAT, GRACE_DAYS, MAX_PERIODS,
+    arrearsFor, arrearsLabel, lateFeeFor, nextPeriod, addMonth, addYear,
 };

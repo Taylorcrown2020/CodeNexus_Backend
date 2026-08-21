@@ -344,12 +344,37 @@ module.exports = function initLifecycle({
     // public/assets.
     // ------------------------------------------------------------------
     const SITE = String(process.env.SITE_URL || 'https://diamondbackcoding.com').replace(/\/+$/, '');
-    const LOGO_URL = process.env.LOGO_URL
-        || `${SITE}/assets/${process.env.LOGO_FILE || 'logo.png'}`;
 
-    console.log(`[LIFECYCLE] Email logo: ${LOGO_URL}`);
-    console.log('[LIFECYCLE] If that 404s, set LOGO_FILE to the actual filename in '
-              + 'public/assets, or LOGO_URL to the full address.');
+    // FIND THE FILE RATHER THAN GUESS ITS NAME.
+    //
+    // I hardcoded 'logo.png' and it was wrong. The file is on disk — read the
+    // directory and use what is actually there, preferring anything with
+    // "logo" in the name, then any image.
+    const LOGO_FILE = (() => {
+        if (process.env.LOGO_FILE) return process.env.LOGO_FILE;
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const dir = path.join(__dirname, 'public', 'assets');
+            const files = fs.readdirSync(dir)
+                .filter((f) => /\.(png|jpe?g|gif|webp|svg)$/i.test(f));
+            if (!files.length) return null;
+            const named = files.find((f) => /logo/i.test(f));
+            return named || files[0];
+        } catch { return null; }
+    })();
+
+    const LOGO_URL = process.env.LOGO_URL
+        || (LOGO_FILE ? `${SITE}/assets/${encodeURIComponent(LOGO_FILE)}` : null);
+
+    if (LOGO_URL) {
+        console.log(`[LIFECYCLE] Email logo: ${LOGO_URL}`);
+        console.log('[LIFECYCLE] Open that in a browser. If it 404s, the file is not in '
+                  + 'public/assets or SITE_URL is wrong.');
+    } else {
+        console.warn('[LIFECYCLE] NO LOGO FOUND in public/assets — emails will send without one. '
+                   + 'Put an image there, or set LOGO_URL to a full https address.');
+    }
 
     function shell(title, bodyHtml, cta) {
         return `<!DOCTYPE html>
@@ -362,13 +387,19 @@ module.exports = function initLifecycle({
 <tr><td align="center">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
 
-    <!-- logo -->
+    <!-- logo (omitted entirely when none is configured — a broken image
+         placeholder looks worse than no logo at all) -->
     <tr><td style="padding:0 4px 18px;">
-      <a href="${process.env.SITE_URL || 'https://diamondbackcoding.com'}" style="text-decoration:none;">
-        <img src="${LOGO_URL}" alt="Diamondback Coding" width="188" height="38"
-             onerror="this.style.display='none'"
+      <a href="${SITE}" style="text-decoration:none;">
+        ${LOGO_URL ? `<img src="${LOGO_URL}" alt="Diamondback Coding" width="188"
              style="display:block;border:0;outline:none;text-decoration:none;
-                    width:188px;max-width:188px;height:auto;">
+                    width:188px;max-width:188px;height:auto;">`
+          // No logo configured: a wordmark rather than a broken image icon,
+          // which is also what most recipients see anyway — Gmail and Outlook
+          // block remote images by default until the reader allows them.
+          : `<span style="display:block;font:800 19px/1.2 -apple-system,Segoe UI,Roboto,sans-serif;
+                          letter-spacing:.12em;color:#0d0f12;text-transform:uppercase;">
+               Diamondback Coding</span>`}
       </a>
     </td></tr>
 
@@ -429,6 +460,11 @@ module.exports = function initLifecycle({
      *
      * Never touches lead scoring. See the firewall note in the header.
      */
+    // Declared before chargeMaintenancePlan() uses it — a `const` referenced
+    // before its declaration throws only at runtime, which is how the
+    // 'dayChanged' bug got out.
+    let dunning = require('./diamondback-dunning.js');
+
     async function notify({
         leadId, lead, kind, subject, bodyHtml, smsText, cta,
         channels = ['email'], invoiceId = null, scheduleId = null,
@@ -2088,7 +2124,11 @@ module.exports = function initLifecycle({
                 },
             });
         } catch (e) {
-            const failures = Number(plan.consecutive_failures || 0) + 1;
+            // The scheduled version: retry on days 1,3,5,7,10, suspend at 14,
+            // end at 30. The old code retried EVERY DAY, which card networks
+            // penalise and which never actually stopped the service.
+            const dun = await dunning.recordFailure(plan, e).catch(() => null);
+            const failures = dun ? dun.failures : Number(plan.consecutive_failures || 0) + 1;
             // LOOPHOLE FIX: 'past_due' alone left the plan running and being
             // retried indefinitely — unlimited free service after a card was
             // cancelled. Past due at 3, suspended at 6, and the unpaid period is
@@ -2107,8 +2147,13 @@ module.exports = function initLifecycle({
                 lead, kind: 'maintenance_charge_failed',
                 subject: `We couldn't process your ${plan.label} payment`,
                 bodyHtml: `<p style="margin:0 0 12px">We tried to charge ${money(chargeAmount)} for <strong style="color:#0d0f12">${plan.label}</strong> and it didn't go through.</p>
-                           <p style="margin:0 0 12px">${e.message}</p>
-                           <p style="margin:0">Please update your payment method in your portal — we'll retry automatically.</p>`,
+                           <p style="margin:0 0 12px">${(dun && dun.reason) || e.message}</p>
+                           <p style="margin:0 0 12px">Please update your payment method in your portal.
+                           ${dun && dun.nextRetry ? `We'll try again on ${prettyDate(dun.nextRetry)}.` : ''}</p>
+                           <p style="margin:0;font-size:13px;color:#5c646f">If it is not resolved, the service
+                           will be suspended on ${prettyDate(dunning.addDays
+                             ? dunning.addDays((dun && dun.startedAt) || new Date(), dunning.SUSPEND_DAY)
+                             : new Date())}.</p>`,
                 smsText: `Diamondback Coding: your ${plan.label} payment of ${money(chargeAmount)} didn't go through. Please update your payment method in your portal.`,
                 channels: ['email', 'sms', 'portal'],
             });
@@ -2161,7 +2206,11 @@ module.exports = function initLifecycle({
                 SET last_charge_date=CURRENT_DATE, next_charge_date=$2,
                     charges_completed=COALESCE(charges_completed,0)+1,
                     consecutive_failures=0, last_payment_id=$3,
-                    status = CASE WHEN status='past_due' THEN 'active' ELSE status END,
+                    -- Paying clears dunning outright: no retry pending, no
+                    -- suspension, back to active.
+                    dunning_started_at=NULL, next_retry_at=NULL, suspended_at=NULL,
+                    last_failure_reason=NULL,
+                    status = CASE WHEN status IN ('past_due','suspended') THEN 'active' ELSE status END,
                     -- CLOSE THE PERIOD THAT WAS JUST PAID, and open the next.
                     -- These two columns are what the outstanding balance reads.
                     -- settlePlanPeriod() existed for this and was never wired
@@ -2273,7 +2322,19 @@ module.exports = function initLifecycle({
         const everCharged = Number(plan.charges_completed || 0) > 0 || !!plan.last_charge_date;
         const hasMethod = !!(await methodForPlan(plan));
 
-        if (plan.signed_at && !everCharged && !hasMethod) {
+        // A plan whose FIRST PAYMENT DATE HAS PASSED has started, whether or
+        // not a card was ever added. It owes for the periods that have gone by,
+        // and unwinding it would wipe that — which is how cancelling let you
+        // walk away without settling anything.
+        //
+        // "Never started" has to mean the first payment date is still ahead.
+        // Otherwise the way to avoid the notice period is simply to remove your
+        // card and cancel.
+        const arrearsCheck = require('./diamondback-arrears.js')
+            .arrearsFor(plan, planChargeTotal(plan));
+        const nothingOwedYet = arrearsCheck.periodsMissed === 0;
+
+        if (plan.signed_at && !everCharged && !hasMethod && nothingOwedYet) {
             await pool.query(
                 `UPDATE maintenance_plans
                     SET status = 'pending_signature',
@@ -2551,6 +2612,9 @@ module.exports = function initLifecycle({
 
     /** Charge every maintenance plan due today. */
     async function runMaintenanceCharges() {
+        // A plan in dunning is only attempted on its scheduled retry day —
+        // runDunningCycle() owns those. Charging here as well would put it back
+        // to one attempt a day.
         // signed_at is required, in both directions: an unsigned plan is never
         // charged (no taking money against an unsigned document), and a signed
         // plan whose period is due is never skipped (which is what let people
@@ -2561,6 +2625,11 @@ module.exports = function initLifecycle({
                 AND signed_at IS NOT NULL
                 AND next_charge_date IS NOT NULL
                 AND next_charge_date <= CURRENT_DATE
+                -- A plan already in dunning is retried ONLY on its scheduled
+                -- day, by runDunningCycle(). Charging it here as well would put
+                -- it back to one attempt a day — which is exactly what the
+                -- schedule exists to prevent, and what card networks penalise.
+                AND (dunning_started_at IS NULL)
               ORDER BY id`
         );
         const results = [];
@@ -2750,6 +2819,9 @@ module.exports = function initLifecycle({
         // just settled an invoice, and there's no sense dunning something that
         // was paid ninety seconds ago.
         try { out.dunning = await runDunning(); } catch (e) { out.dunningError = e.message; }
+        // The scheduled retry / suspend / terminate walk.
+        try { out.dunningCycle = await dunning.runDunningCycle(); }
+        catch (e) { out.dunningCycleError = e.message; }
         // Late fees last: a charge earlier in this run may have settled the
         // very thing that would otherwise have been assessed as late.
         try { out.lateFees = (await lateFees.assessLateFees({})).length; }
@@ -4808,6 +4880,11 @@ module.exports = function initLifecycle({
                 }
             } else {
                 // ---- MONTHLY --------------------------------------------
+                //
+                // The notice period runs from today, and any period ALREADY
+                // past its due date is billed on top — those are months that
+                // have gone by unpaid, not notice. Without this a customer who
+                // was three months behind could cancel and owe only the notice.
                 effective = new Date(Date.now() + CANCELLATION_NOTICE_DAYS * 86400000);
 
                 if (periodIsPaid && nextCharge && !isNaN(nextCharge)) {
@@ -6464,6 +6541,14 @@ module.exports = function initLifecycle({
     // is defined in this module's closure. Passing it out is cleaner than
     // exporting it globally.
     // ----------------------------------------------------------------------
+    // Now that notify/adminNotify/chargeMaintenancePlan exist, replace the bare
+    // module with the initialised one.
+    dunning = Object.assign(
+        require('./diamondback-dunning.js'),
+        require('./diamondback-dunning.js').init({
+            pool, notify, adminNotify, money, prettyDate, chargeMaintenancePlan, PORTAL_URL,
+        }));
+
     const lateFees = require('./diamondback-late-fees.js')({ pool });
     require('./diamondback-admin-accounts.js')({
         app, pool, authenticateToken, lateFees, notify, PORTAL_URL,

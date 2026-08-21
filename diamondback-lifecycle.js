@@ -2472,6 +2472,29 @@ module.exports = function initLifecycle({
                         `UPDATE maintenance_plans SET status='cancelled', updated_at=NOW() WHERE id=$1`,
                         [plan.id]).catch(() => {});
                 });
+
+                // VOID THE AGREEMENT AS WELL.
+                //
+                // This cancelled the plan and left the agreement at 'sent', so
+                // an expired plan's document stayed in "Ready to sign" forever.
+                // Every expiry added another one. Cancelling a plan without
+                // voiding its agreement leaves a document asking to be signed
+                // for something that no longer exists.
+                if (plan.agreement_id) {
+                    await pool.query(
+                        `UPDATE sales_agreements
+                            SET status='void', signed_at=NULL, signature_name=NULL,
+                                provisional_signed_at=NULL, provisional_signer_name=NULL,
+                                updated_at=NOW()
+                          WHERE id=$1`, [plan.agreement_id]
+                    ).catch(async () => {
+                        await pool.query(
+                            `UPDATE sales_agreements SET status='void', updated_at=NOW() WHERE id=$1`,
+                            [plan.agreement_id]).catch(() => {});
+                    });
+                    await pool.query('DELETE FROM agreement_signatures WHERE agreement_id=$1',
+                                     [plan.agreement_id]).catch(() => {});
+                }
                 // Any invoice raised for a plan that never started is void.
                 await pool.query(
                     `UPDATE invoices SET status='void', updated_at=NOW()
@@ -6546,6 +6569,17 @@ module.exports = function initLifecycle({
             await pool.query(
                 `UPDATE plan_cancellations SET status='superseded', updated_at=NOW()
                   WHERE maintenance_plan_id=$1 AND status='pending'`, [plan.id]).catch(() => {});
+
+            // Mark the agreement CLOSED — signed, but no longer running.
+            //
+            // It keeps signed_at and the signature, so it still appears under
+            // Signed agreements for reference, which is what you asked for. It
+            // just stops being treated as a live agreement.
+            if (plan.agreement_id) {
+                await pool.query(
+                    `UPDATE sales_agreements SET status='closed', updated_at=NOW()
+                      WHERE id=$1 AND signed_at IS NOT NULL`, [plan.agreement_id]).catch(() => {});
+            }
 
             let forgiven = 0;
             if (b.forgiveArrears) {

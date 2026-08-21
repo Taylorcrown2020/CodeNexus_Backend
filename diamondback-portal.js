@@ -1660,7 +1660,17 @@ module.exports = function initPortal({
                        FROM sales_agreements sa
                        LEFT JOIN agreement_signatures sig ON sig.agreement_id = sa.id
                       WHERE sa.lead_id = $1
-                        AND COALESCE(sa.status,'') <> 'void'
+                        AND COALESCE(sa.status,'') NOT IN ('void','cancelled','expired')
+                        -- BELT AND BRACES: an agreement whose plan is cancelled
+                        -- is never signable, whatever its own status says. Some
+                        -- rows were cancelled by older code paths that only
+                        -- touched the plan, so filtering on sa.status alone
+                        -- left them sitting in "Ready to sign" for good.
+                        AND NOT EXISTS (
+                            SELECT 1 FROM maintenance_plans mp
+                             WHERE mp.agreement_id = sa.id
+                               AND mp.status = 'cancelled'
+                               AND sa.signed_at IS NULL)
                       ORDER BY sa.created_at DESC`,
                     [clientId]
                 );
@@ -1675,7 +1685,8 @@ module.exports = function initPortal({
                 try {
                     const plain = await pool.query(
                         `SELECT * FROM sales_agreements WHERE lead_id = $1
-                           AND COALESCE(status,'') <> 'void' ORDER BY created_at DESC`,
+                           AND COALESCE(status,'') NOT IN ('void','cancelled','expired')
+                         ORDER BY created_at DESC`,
                         [clientId]
                     );
                     salesAgreements = plain.rows;

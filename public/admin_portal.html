@@ -24030,6 +24030,37 @@ function dbAccDoc(agreementId){
   return dbAccFetchPdf('/api/admin/sales-agreements/'+agreementId+'/pdf','Agreement-'+agreementId+'.pdf');
 }
 
+
+/* ===================================================================== */
+/* TERMINATE A PLAN                                                      */
+/*                                                                       */
+/* You ending it, not the customer cancelling. No notice period and no   */
+/* settlement — you would not bill someone for notice on a plan you      */
+/* chose to end. Outstanding money already owed is NOT written off       */
+/* unless you say so.                                                    */
+/* ===================================================================== */
+async function dbmTerminatePlan(planId, label){
+  const endOfPeriod = confirm(
+    'Terminate "' + label + '"?\n\n' +
+    'OK    = let it run to the day before the next charge (they keep what they paid for)\n' +
+    'Cancel = end it immediately\n\n' +
+    'Either way nothing further is charged.');
+  const reason = prompt('Reason (included in the email to the customer, optional):', '');
+  if(reason === null) return;
+  const forgiveArrears = confirm(
+    'Write off any outstanding balance and late fees on this plan?\n\n' +
+    'OK    = write it off\n' +
+    'Cancel = they still owe it');
+  try{
+    const r = await dbmSend('/api/admin/maintenance-plans/' + planId + '/terminate',
+      { endOfPeriod, reason, forgiveArrears });
+    if(r.success === false) throw new Error(r.message);
+    dbmNote(r.message || 'Plan terminated.');
+    const host = document.getElementById('contentArea');
+    if(host && typeof renderMaintenance === 'function') renderMaintenance(host);
+  }catch(e){ alert('Could not terminate: ' + e.message); }
+}
+
 /* ---------------- MAINTENANCE ---------------- */
 async function renderMaintenance(content){
   content.innerHTML = `<div class="dbm-empty">Loading maintenance plans…</div>`;
@@ -24077,6 +24108,10 @@ async function renderMaintenance(content){
       <td style="white-space:nowrap">
         <button class="btn btn-sm btn-primary" onclick="dbAccount(${p.lead_id})">Account</button>
         <button class="btn btn-sm" onclick="dbmEditPlan(${p.id})">Edit</button>
+        ${p.status !== 'cancelled'
+          ? `<button class="btn btn-sm" style="color:#ef4444"
+               onclick="dbmTerminatePlan(${p.id}, '${dbmEsc(String(p.label||'').replace(/'/g,''))}')">Terminate</button>`
+          : ''}
       </td></tr>`;
   }).join('') : '';
 
@@ -24431,7 +24466,7 @@ async function dbmNewPlan(){
 
 /* ---------------- PAST DUE ---------------- */
 async function renderPastDue(content){
-  content.innerHTML = `<div class="dbm-empty">Loading past-due invoices…</div>`;
+  content.innerHTML = planBlock + `<div class="dbm-empty">Loading past-due invoices…</div>`;
   let d;
   try{
     d = await dbmGet('/api/admin/past-due');
@@ -24445,6 +24480,41 @@ async function renderPastDue(content){
     return;
   }
   dbmUpdateBadge('pastDueBadge', d.count || 0);
+
+  /* Overdue PLANS. An autopay plan raises no invoice, so a plan past its due
+     date used to be overdue everywhere except the screen called Past Due. */
+  const planRows = (d.plans || []).map(p => `
+    <tr>
+      <td><div style="color:#fff;font-weight:600">${dbmEsc(p.name || '')}</div>
+          <div style="color:#8a8a8a;font-size:12px">${dbmEsc(p.email || '')}</div></td>
+      <td><div style="color:#fff">${dbmEsc(p.label || '')}</div>
+          <div style="color:#8a8a8a;font-size:12px">${dbmEsc(p.arrears_label || '')}</div></td>
+      <td><strong style="color:#ef4444">${dbmMoney(p.total_owed)}</strong>
+          ${Number(p.late_fee_total) > 0
+            ? `<div style="color:#eab308;font-size:12px">incl. ${dbmMoney(p.late_fee_total)} fees</div>` : ''}</td>
+      <td>${dbmDate(p.due_date)}
+          <div style="color:#ef4444;font-size:12px">${p.days_overdue} day${p.days_overdue===1?'':'s'} late</div></td>
+      <td style="color:#eab308;font-size:12.5px">${dbmEsc(p.reason || '')}</td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="dbAccount(${p.lead_id})">Account</button>
+        <button class="btn btn-sm" style="color:#ef4444"
+          onclick="dbmTerminatePlan(${p.id}, '${dbmEsc(String(p.label||'').replace(/'/g,''))}')">Terminate</button>
+      </td>
+    </tr>`).join('');
+
+  const planBlock = (d.plans || []).length ? `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-h" style="margin-bottom:12px">
+        <h3 style="margin:0">Overdue plans</h3>
+        <span class="dbm-pill past_due">${dbmMoney(d.planOwed || 0)}</span>
+      </div>
+      <div style="color:#8a8a8a;font-size:12.5px;margin-bottom:12px">
+        Autopay plans past their charge date. These raise no invoice, so they only appear here.
+      </div>
+      <div style="overflow-x:auto"><table class="dbm-table">
+        <thead><tr><th>Customer</th><th>Plan</th><th>Owed</th><th>Due</th><th>Why</th><th></th></tr></thead>
+        <tbody>${planRows}</tbody></table></div>
+    </div>` : '';
 
   const rows = (d.invoices||[]).map(i=>{
     const days = Number(i.days_overdue);

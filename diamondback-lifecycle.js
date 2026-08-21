@@ -2175,6 +2175,16 @@ module.exports = function initLifecycle({
         if (!plan) throw new Error('Plan not found');
         if (plan.status === 'cancelled') throw new Error('This plan is already cancelled');
 
+        // Enforced here as well as hidden in the UI. A hidden button is not a
+        // rule — anything that can be called directly has to refuse directly.
+        if (!plan.signed_at && requestedBy === 'customer') {
+            const err = new Error(
+                'This plan has not been signed, so there is nothing to cancel. '
+                + 'If you do not want it, simply leave it unsigned and it will not start.');
+            err.code = 'NOT_SIGNED';
+            throw err;
+        }
+
         // ------------------------------------------------------------------
         // SIGNED, BUT NEVER PAID FOR — UNWIND IT RATHER THAN CANCEL IT.
         //
@@ -2938,7 +2948,73 @@ module.exports = function initLifecycle({
             if (d > DUNNING_MAX_DAY) buckets.escalated++;
             else buckets.days1_10++;
         }
-        return { invoices: rows, count: rows.length, totalOwed, buckets, maxDay: DUNNING_MAX_DAY };
+        // ------------------------------------------------------------------
+        // OVERDUE PLANS BELONG HERE TOO.
+        //
+        // This listed INVOICES only. An autopay plan generates no invoice — it
+        // charges the card directly — so a plan past its due date with no card
+        // on file was overdue everywhere in the system EXCEPT the screen called
+        // Past Due. The one place you would go to find it was the one place it
+        // could not appear.
+        // ------------------------------------------------------------------
+        const arrears = require('./diamondback-arrears.js');
+        const planRows = (await pool.query(
+            `SELECT mp.*, l.id AS lead_id, l.name, l.email, l.phone,
+                    (CURRENT_DATE - mp.next_charge_date) AS days_overdue,
+                    COALESCE(pm.id, l.default_payment_method_id) AS method_id,
+                    pm.brand, pm.last4,
+                    (SELECT COALESCE(SUM(lf.amount),0) FROM late_fees lf
+                      WHERE lf.maintenance_plan_id = mp.id AND lf.status = 'outstanding')
+                        AS late_fee_total
+               FROM maintenance_plans mp
+               JOIN leads l ON l.id = mp.lead_id
+               LEFT JOIN payment_methods pm
+                      ON pm.id = mp.payment_method_id AND pm.status = 'active'
+              WHERE mp.status IN ('active','past_due','pending_payment_method',
+                                  'pending_signature','pending_cancellation')
+                AND mp.next_charge_date IS NOT NULL
+                AND mp.next_charge_date < CURRENT_DATE
+                AND mp.current_period_paid_at IS NULL
+              ORDER BY mp.next_charge_date`
+        ).catch((e) => { console.warn('[PAST DUE] plans skipped:', e.message); return { rows: [] }; })).rows;
+
+        const plans = planRows.map((p) => {
+            const per = planChargeTotal(p);
+            const owed = arrears.arrearsFor(p, per);
+            return {
+                id: p.id, lead_id: p.lead_id, name: p.name, email: p.email, phone: p.phone,
+                label: p.label, interval_unit: p.interval_unit, status: p.status,
+                due_date: p.next_charge_date,
+                days_overdue: Number(p.days_overdue || 0),
+                per_period: per,
+                periods_owed: owed.periodsMissed,
+                amount_owed: owed.total,
+                late_fee_total: Number(p.late_fee_total || 0),
+                total_owed: Math.round((owed.total + Number(p.late_fee_total || 0)) * 100) / 100,
+                arrears_label: arrears.arrearsLabel(p, owed),
+                // WHY it is stuck — the first thing you need before chasing it.
+                reason: !p.signed_at && !p.provisional_signed_at ? 'never signed'
+                      : !p.signed_at ? 'signed but no payment method — not started'
+                      : !p.method_id ? 'no payment method on file'
+                      : 'charge failed or pending',
+                has_method: !!p.method_id,
+                method: p.last4 ? `${p.brand || 'card'} ····${p.last4}` : null,
+            };
+        });
+
+        const planOwed = plans.reduce((t, x) => t + x.total_owed, 0);
+
+        return {
+            invoices: rows,
+            plans,
+            count: rows.length + plans.length,
+            invoiceCount: rows.length,
+            planCount: plans.length,
+            totalOwed: Math.round((totalOwed + planOwed) * 100) / 100,
+            invoiceOwed: totalOwed,
+            planOwed: Math.round(planOwed * 100) / 100,
+            buckets, maxDay: DUNNING_MAX_DAY,
+        };
     }
 
     // ======================================================================
@@ -5491,8 +5567,32 @@ module.exports = function initLifecycle({
                 const arr = require('./diamondback-arrears.js');
                 const per = p.__price ? p.__price.total : Number(p.amount || 0);
                 const a = arr.arrearsFor(p, per);
-                p.__arrears = { periodsMissed: a.periodsMissed, total: a.total,
-                                lateTotal: a.lateTotal, label: arr.arrearsLabel(p, a) };
+
+                // THE FEE TOTAL COMES FROM THE late_fees TABLE, NOT THE
+                // CALCULATION.
+                //
+                // arrearsFor() works out what a fee WOULD be. It knows nothing
+                // about the fees actually on the account, so a fee dropped in
+                // the admin portal kept reappearing here — the card recomputed
+                // it every time and the waiver was invisible.
+                //
+                // Waived rows stay in the table with status='waived', so
+                // summing only the outstanding ones is what makes dropping a
+                // fee actually stick.
+                const feeRow = await pool.query(
+                    `SELECT COALESCE(SUM(amount),0) AS total, COUNT(*)::int AS n
+                       FROM late_fees
+                      WHERE maintenance_plan_id = $1 AND status = 'outstanding'`,
+                    [p.id]).catch(() => null);
+
+                const actualFees = feeRow ? Number(feeRow.rows[0].total || 0) : a.lateTotal;
+
+                p.__arrears = {
+                    periodsMissed: a.periodsMissed,
+                    total: a.total,
+                    lateTotal: Math.round(actualFees * 100) / 100,
+                    label: arr.arrearsLabel(p, a),
+                };
             } catch (e) { console.warn('[PLANS] arrears skipped:', e.message); }
         }
 
@@ -5558,7 +5658,16 @@ module.exports = function initLifecycle({
                 last4: p.last4, bank_name: p.bank_name,
             } : null,
             can_change_payment_method: true,
-            can_cancel: ['active', 'past_due', 'pending_payment_method', 'pending_signature'].includes(p.status),
+            // YOU CANNOT CANCEL WHAT YOU NEVER AGREED TO.
+            //
+            // 'pending_signature' was in this list, so an unsigned plan showed
+            // a Cancel button — which makes no sense: there is nothing to come
+            // out of. Worse, it invited the customer to "cancel" something they
+            // still owe an unsigned balance on, as though that settled it.
+            //
+            // An unsigned plan is declined by ignoring it, or removed by us.
+            can_cancel: !!p.signed_at
+                && ['active', 'past_due', 'pending_payment_method'].includes(p.status),
             // The customer typed their name but there is no card, so nothing
             // counts as signed yet. Surfaced so the portal can say exactly that
             // instead of inferring from status.
@@ -6277,6 +6386,109 @@ module.exports = function initLifecycle({
     const lateFees = require('./diamondback-late-fees.js')({ pool });
     require('./diamondback-admin-accounts.js')({
         app, pool, authenticateToken, lateFees, notify, PORTAL_URL,
+    });
+
+    /**
+     * TERMINATE A PLAN FROM THE ADMIN SIDE.
+     *
+     * Different from the customer cancelling. This is you ending it, so there
+     * is no notice period to serve and no settlement to collect — you would not
+     * bill someone for a notice period on a plan you chose to end.
+     *
+     * Two modes:
+     *   immediate (default) — ends today
+     *   endOfPeriod         — runs to the day before the next charge, so they
+     *                         keep what they have already paid for
+     *
+     * Outstanding arrears are NOT wiped by default: ending the plan does not
+     * forgive money already owed for service already delivered. Pass
+     * forgiveArrears to write it off, which is recorded as a waiver rather than
+     * a deletion so there is a trail.
+     */
+    app.post('/api/admin/maintenance-plans/:id/terminate', authenticateToken, async (req, res) => {
+        try {
+            const b = req.body || {};
+            const plan = (await pool.query(
+                'SELECT * FROM maintenance_plans WHERE id=$1', [req.params.id])).rows[0];
+            if (!plan) return res.status(404).json({ success: false, message: 'Plan not found.' });
+            if (plan.status === 'cancelled') {
+                return res.status(409).json({ success: false, message: 'That plan is already cancelled.' });
+            }
+
+            const endOfPeriod = !!b.endOfPeriod;
+            let endsOn = new Date();
+            if (endOfPeriod && plan.next_charge_date) {
+                // The day BEFORE the next charge: the charge date starts a
+                // period they have not paid for.
+                const d = new Date(plan.next_charge_date);
+                d.setDate(d.getDate() - 1);
+                if (d > endsOn) endsOn = d;
+            }
+
+            await pool.query(
+                `UPDATE maintenance_plans
+                    SET status = 'cancelled',
+                        cancelled_at = NOW(),
+                        next_charge_date = NULL,
+                        updated_at = NOW()
+                  WHERE id = $1`, [plan.id]
+            ).catch(async (e) => {
+                // cancelled_at may not exist on an older schema.
+                console.warn('[TERMINATE] falling back:', e.message);
+                await pool.query(
+                    `UPDATE maintenance_plans
+                        SET status='cancelled', next_charge_date=NULL, updated_at=NOW()
+                      WHERE id=$1`, [plan.id]);
+            });
+
+            // Clear any pending customer cancellation — this supersedes it.
+            await pool.query(
+                `UPDATE plan_cancellations SET status='superseded', updated_at=NOW()
+                  WHERE maintenance_plan_id=$1 AND status='pending'`, [plan.id]).catch(() => {});
+
+            let forgiven = 0;
+            if (b.forgiveArrears) {
+                const w = await pool.query(
+                    `UPDATE late_fees
+                        SET status='waived', waived_at=NOW(), waived_by=$2,
+                            waive_reason='Plan terminated by Diamondback Coding', updated_at=NOW()
+                      WHERE maintenance_plan_id=$1 AND status='outstanding'
+                      RETURNING amount`,
+                    [plan.id, (req.user && (req.user.email || req.user.username)) || 'admin']
+                ).catch(() => ({ rows: [] }));
+                forgiven = w.rows.reduce((t, x) => t + Number(x.amount || 0), 0);
+            }
+
+            const lead = (await pool.query('SELECT * FROM leads WHERE id=$1', [plan.lead_id])).rows[0];
+            if (lead && b.notifyCustomer !== false) {
+                await notify({
+                    lead, kind: 'plan_terminated',
+                    subject: `${plan.label} has ended`,
+                    bodyHtml:
+                        `<p style="margin:0 0 12px">Your <strong style="color:#0d0f12">${plan.label}</strong> `
+                        + `plan has been ended${endOfPeriod ? ` on ${prettyDate(endsOn)}` : ''}.</p>`
+                        + `<p style="margin:0 0 12px">Nothing further will be charged.</p>`
+                        + (b.reason ? `<p style="margin:0 0 12px">${esc(String(b.reason).slice(0, 400))}</p>` : '')
+                        + `<p style="margin:0">If you have questions, just reply to this email.</p>`,
+                }).catch((e) => console.warn('[TERMINATE] notify:', e.message));
+            }
+
+            console.log(`[TERMINATE] plan ${plan.id} (${plan.label}) ended by admin`
+                      + `${b.reason ? ` — ${b.reason}` : ''}.`);
+
+            res.json({
+                success: true,
+                planId: plan.id,
+                endsOn: dateOnly(endsOn),
+                forgiven,
+                message: `${plan.label} terminated. Nothing further will be charged`
+                       + (forgiven > 0 ? `, and ${money(forgiven)} of late fees were written off.` : '.')
+                       + (b.forgiveArrears ? '' : ' Any outstanding balance is still owed.'),
+            });
+        } catch (e) {
+            console.error('[TERMINATE]', e.message);
+            res.status(500).json({ success: false, message: dbErrorMessage(e, 'That plan') });
+        }
     });
 
     app.get('/api/admin/maintenance-plans', authenticateToken, async (req, res) => {

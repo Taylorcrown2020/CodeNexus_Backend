@@ -175,6 +175,9 @@ window.addEventListener('load', function() {
   --ink: #050506;
   --ink-2: #0d0d0f;
   --ink-3: #17171a;
+  /* One shared chrome/footer gray — announcement, nav, mega menu and footer
+     all sit on this exact value so there is never a visible seam. */
+  --surface: #141516;
   --paper: #ffffff;
   --paper-2: #f7f6f3;
   --paper-3: #f0eee9;
@@ -376,7 +379,7 @@ a:focus-visible, button:focus-visible {
   justify-content: center;
   gap: 5px;
   padding: 0 16px;
-  background: var(--ink);
+  background: var(--surface);
   color: #f0ece5;
   font-size: 11.5px;
   font-weight: 500;
@@ -398,10 +401,14 @@ nav {
   right: 0;
   z-index: 1100;
   height: var(--nav-h);
-  background: var(--ink);
+  background: var(--surface);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  transition: background 0.25s var(--ease);
+  transition: border-color 0.2s var(--ease);
 }
+/* When a dropdown is open the nav and the panel read as one block —
+   no hairline across the seam. */
+nav:has(.nav-links > li:hover) ,
+nav:has(.nav-links > li:focus-within) { border-bottom-color: transparent; }
 .nav-container {
   height: 100%;
   max-width: var(--max);
@@ -509,9 +516,9 @@ nav {
     top: 100%;
     left: 0;
     right: 0;
-    background: #0f0f10;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+    background: var(--surface);
+    border-top: 0;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45);
     padding: 46px 0 52px;
     opacity: 0;
     visibility: hidden;
@@ -1081,11 +1088,19 @@ nav {
    -------------------------------------------------------------------------- */
 .cta-band {
   position: relative;
-  background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.72)),
-    url('https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=1920&q=80') center / cover;
-  padding: 72px 0;
+  background:
+    linear-gradient(to bottom,
+      rgba(5, 5, 6, 0.52) 0%,
+      rgba(5, 5, 6, 0.60) 26%,
+      rgba(20, 21, 22, 0.74) 52%,
+      rgba(20, 21, 22, 0.93) 78%,
+      var(--surface) 100%),
+    url('https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=1920&q=80') center top / cover;
+  /* Extra bottom padding gives the fade room to resolve into the footer. */
+  padding: 72px 0 120px;
+  margin-bottom: 0;
 }
-@media (min-width: 1000px) { .cta-band { padding: 150px 0; } }
+@media (min-width: 1000px) { .cta-band { padding: 150px 0 240px; } }
 .cta-panel {
   background: var(--sand);
   color: var(--ink);
@@ -1110,17 +1125,19 @@ nav {
 /* --------------------------------------------------------------------------
    Footer
    -------------------------------------------------------------------------- */
-footer { background: var(--ink); color: #fff; padding-bottom: 100px; }
-@media (min-width: 1000px) { footer { padding-bottom: 32px; } }
+/* The footer shares the exact surface the CTA photo fades into, so the two
+   read as one continuous block with no seam. */
+footer { background: var(--surface); color: #fff; padding-bottom: 150px; margin-top: 0; }
+@media (min-width: 1000px) { footer { padding-bottom: 40px; } }
 
 .foot-top {
-  padding: 40px 0 10px;
+  padding: 0 0 10px;
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
-.foot-contact-label { font-size: 15px; color: rgba(255, 255, 255, 0.62); margin-bottom: 4px; }
-.foot-phone { font-size: clamp(22px, 5vw, 26px); font-weight: 700; letter-spacing: -0.01em; }
+.foot-contact-label { font-size: 15px; color: rgba(255, 255, 255, 0.62); margin-bottom: 6px; }
+.foot-phone { font-size: clamp(22px, 5vw, 27px); font-weight: 700; letter-spacing: -0.01em; }
 .foot-demo-btn {
   align-self: flex-start;
   min-height: 54px;
@@ -1136,44 +1153,70 @@ footer { background: var(--ink); color: #fff; padding-bottom: 100px; }
 }
 .foot-demo-btn:hover { background: var(--gold); color: var(--ink); }
 @media (min-width: 1000px) {
-  .foot-top { flex-direction: row; align-items: center; justify-content: space-between; padding: 56px 0 0; }
-  .foot-demo-btn { border-radius: 0; padding: 0 40px; min-height: 58px; }
+  .foot-top { flex-direction: row; align-items: center; justify-content: space-between; padding: 0; }
+  .foot-demo-btn { border-radius: 0; padding: 0 46px; min-height: 62px; font-size: 12.5px; }
 }
 
-.foot-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px 20px; padding: 52px 0 40px; }
-@media (min-width: 1000px) { .foot-cols { grid-template-columns: repeat(4, 1fr); gap: 40px; padding: 100px 0 60px; } }
-.foot-cols h4 { font-size: 15px; font-weight: 600; letter-spacing: 0; color: #fff; margin-bottom: 18px; }
-.foot-cols a { display: block; font-size: 14.5px; line-height: 2.3; color: rgba(255, 255, 255, 0.6); }
+.foot-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 36px 20px; padding: 60px 0 40px; }
+@media (min-width: 1000px) { .foot-cols { grid-template-columns: repeat(4, 1fr); gap: 40px; padding: 130px 0 110px; } }
+.foot-cols h4 {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 20px;
+}
+.foot-cols a { display: block; font-size: 14.5px; line-height: 2.35; color: rgba(255, 255, 255, 0.58); transition: color 0.18s var(--ease); }
 .foot-cols a:hover { color: #fff; }
-@media (min-width: 1000px) { .foot-cols h4 { font-size: 17px; margin-bottom: 24px; } }
+@media (min-width: 1000px) { .foot-cols h4 { font-size: 15px; letter-spacing: 2.6px; margin-bottom: 28px; } .foot-cols a { font-size: 15px; line-height: 2.5; } }
 
-.foot-mark { display: flex; justify-content: center; padding: 18px 0 26px; }
-.foot-mark svg { width: 30px; height: 30px; color: rgba(255, 255, 255, 0.65); }
-
+/* Bottom bar: copyright / mark / legal / social on one line, no divider rule
+   — matches the reference exactly. */
 .foot-bottom {
-  border-top: 1px solid var(--line-d);
-  padding: 22px 0;
+  border-top: 0;
+  padding: 26px 0 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.48);
 }
-.foot-legal { display: flex; gap: 20px; flex-wrap: wrap; }
+.foot-bottom > p { order: 1; }
+.foot-mark { order: 0; display: flex; justify-content: center; }
+.foot-mark svg { width: 26px; height: 26px; color: rgba(255, 255, 255, 0.6); }
+.foot-legal { order: 2; display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; }
+.foot-legal a { color: rgba(255, 255, 255, 0.48); }
 .foot-legal a:hover { color: #fff; }
-.foot-social { display: flex; gap: 10px; }
+.foot-social { order: 3; display: flex; gap: 12px; }
 .foot-social a {
   width: 38px; height: 38px;
   border-radius: 50%;
-  border: 1px solid var(--line-d);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   display: grid; place-items: center;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.72);
+  transition: border-color 0.18s var(--ease), color 0.18s var(--ease);
 }
 .foot-social a:hover { border-color: var(--gold); color: var(--gold); }
 @media (min-width: 1000px) {
-  .foot-bottom { flex-direction: row; align-items: center; justify-content: space-between; gap: 30px; }
+  .foot-bottom {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    gap: 30px;
+    padding: 10px 0 0;
+  }
+  .foot-bottom > p { order: 0; margin-right: auto; }
+  .foot-mark { order: 1; position: absolute; left: 50%; transform: translateX(-50%); }
+  .foot-legal { order: 2; }
+  .foot-social { order: 3; }
+  .foot-bottom { position: relative; }
 }
-.foot-pay { padding: 10px 0 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.foot-pay { padding: 0 0 26px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .foot-pay p { font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: rgba(255,255,255,0.35); }
 .foot-pay svg { width: 42px; height: 26px; border-radius: 4px; }
 
@@ -3335,29 +3378,32 @@ body.modal-open { overflow: hidden; }
             <svg viewBox="0 0 80 50" aria-label="Mastercard"><rect width="80" height="50" rx="6" fill="#fff"/><circle cx="30" cy="25" r="14" fill="#EB001B"/><circle cx="50" cy="25" r="14" fill="#F79E1B"/><path d="M40,13.6c2.6,2.8,4.2,6.6,4.2,10.8s-1.6,8-4.2,10.8c-2.6-2.8-4.2-6.6-4.2-10.8s1.6-8,4.2-10.8z" fill="#FF5F00"/></svg>
             <svg viewBox="0 0 80 50" aria-label="American Express"><rect width="80" height="50" rx="6" fill="#016FD0"/><text x="40" y="21" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.5" font-weight="800" fill="#fff" letter-spacing="1.5">AMERICAN</text><text x="40" y="32" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7.5" font-weight="800" fill="#fff" letter-spacing="1.5">EXPRESS</text></svg>
             <svg viewBox="0 0 80 50" aria-label="Discover"><rect width="80" height="50" rx="6" fill="#fff"/><text x="30" y="29" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="900" fill="#231F20" letter-spacing="0.8">DISCOVER</text><circle cx="65" cy="25" r="11" fill="#F76F20"/><circle cx="65" cy="25" r="8" fill="#F9A01B"/></svg>
-            <span class="foot-social">
-                <a href="#" aria-label="Facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
-                <a href="#" aria-label="Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
-                <a href="https://www.linkedin.com/in/diamondback-coding-a96aa23aa/" aria-label="LinkedIn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
-            </span>
-        </div>
-
-        <div class="foot-mark">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="currentColor" stroke-width="1.3"/>
-                <path d="M12 12L3 7.5" stroke="currentColor" stroke-width="1.3"/>
-                <path d="M12 12V21" stroke="currentColor" stroke-width="1.3"/>
-                <path d="M12 12L21 7.5" stroke="currentColor" stroke-width="1.3"/>
-            </svg>
         </div>
 
         <div class="foot-bottom">
             <p>&copy; Copyright 2026 Diamondback Coding, Inc. &mdash; All rights reserved.</p>
+
+            <div class="foot-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="currentColor" stroke-width="1.3"/>
+                    <path d="M12 12L3 7.5" stroke="currentColor" stroke-width="1.3"/>
+                    <path d="M12 12V21" stroke="currentColor" stroke-width="1.3"/>
+                    <path d="M12 12L21 7.5" stroke="currentColor" stroke-width="1.3"/>
+                </svg>
+            </div>
+
             <ul class="foot-legal">
                 <li><a href="privacy_policy.html">Privacy Policy</a></li>
                 <li><a href="terms_of_service.html">Terms of Service</a></li>
                 <li><a href="contact.html">Accessibility</a></li>
             </ul>
+
+            <div class="foot-social">
+                <a href="#" aria-label="Facebook"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+                <a href="#" aria-label="Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
+                <a href="#" aria-label="YouTube"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22.5 7a2.8 2.8 0 0 0-2-2C18.8 4.5 12 4.5 12 4.5s-6.8 0-8.5.5a2.8 2.8 0 0 0-2 2A29 29 0 0 0 1 12a29 29 0 0 0 .5 5 2.8 2.8 0 0 0 2 2c1.7.5 8.5.5 8.5.5s6.8 0 8.5-.5a2.8 2.8 0 0 0 2-2 29 29 0 0 0 .5-5 29 29 0 0 0-.5-5z"/><polygon points="9.9,15.1 15.7,12 9.9,8.9" fill="currentColor" stroke="none"/></svg></a>
+                <a href="https://www.linkedin.com/in/diamondback-coding-a96aa23aa/" aria-label="LinkedIn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
+            </div>
         </div>
 
     </div>
@@ -4414,15 +4460,8 @@ document.querySelectorAll('.nav-links a').forEach(link => {
     </script>
 
 <script>
-// Nav background change on scroll
-window.addEventListener('scroll', function() {
-    const nav = document.querySelector('nav');
-    if (window.scrollY > 50) {
-        nav.style.background = '#000';
-    } else {
-        nav.style.background = 'var(--black)';
-    }
-});
+// Nav background is a single fixed surface (--surface) handled in CSS.
+// The old scroll handler here forced an inline #000 / var(--black) and is gone.
 // Check URL hash on page load and switch to appropriate tab
 document.addEventListener('DOMContentLoaded', function() {
     // Get the hash from URL (e.g., #crm)
@@ -4988,10 +5027,8 @@ document.addEventListener('keydown', function(e) {
     });
   });
 
-  /* ---- Nav tint on scroll ---- */
-  window.addEventListener('scroll', function () {
-    if (nav) nav.style.background = window.scrollY > 40 ? '#000' : '';
-  }, { passive: true });
+  /* ---- Nav surface is fixed (--surface) so it always matches the mega menu.
+         The old scroll tint that forced #000 has been removed. ---- */
 
   /* ---- Mobile action bar ---- */
   function overlayOpen() {

@@ -379,7 +379,7 @@ a:focus-visible, button:focus-visible {
   justify-content: center;
   gap: 5px;
   padding: 0 16px;
-  background: var(--surface);
+  background: var(--ink);
   color: #f0ece5;
   font-size: 11.5px;
   font-weight: 500;
@@ -401,14 +401,18 @@ nav {
   right: 0;
   z-index: 1100;
   height: var(--nav-h);
-  background: var(--surface);
+  /* Black at rest. Lifts to the shared gray only while a dropdown is open,
+     so the bar and the panel change together as one surface. */
+  background: var(--ink);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  transition: border-color 0.2s var(--ease);
+  transition: background 0.22s var(--ease), border-color 0.22s var(--ease);
 }
-/* When a dropdown is open the nav and the panel read as one block —
-   no hairline across the seam. */
-nav:has(.nav-links > li:hover) ,
-nav:has(.nav-links > li:focus-within) { border-bottom-color: transparent; }
+nav:has(.nav-links > li:hover),
+nav:has(.nav-links > li:focus-within),
+nav.mega-open {
+  background: var(--surface);
+  border-bottom-color: transparent;
+}
 .nav-container {
   height: 100%;
   max-width: var(--max);
@@ -744,7 +748,7 @@ nav:has(.nav-links > li:focus-within) { border-bottom-color: transparent; }
   width: 100%;
   max-width: var(--max);
   margin: 0 auto;
-  padding: 40px var(--gut) 48px;
+  padding: 26px var(--gut) 44px;
 }
 @media (min-width: 1000px) {
   .hero-inner {
@@ -879,7 +883,7 @@ nav:has(.nav-links > li:focus-within) { border-bottom-color: transparent; }
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
 }
-.logo-track { display: flex; width: max-content; animation: logo-scroll 90s linear infinite; will-change: transform; }
+.logo-track { display: flex; width: max-content; animation: logo-scroll 165s linear infinite; will-change: transform; }
 .logo-set { display: flex; align-items: center; gap: 56px; padding-right: 56px; }
 .logo-slot {
   position: relative;
@@ -891,11 +895,13 @@ nav:has(.nav-links > li:focus-within) { border-bottom-color: transparent; }
   flex-shrink: 0;
 }
 .logo-word {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   letter-spacing: 0.4px;
   white-space: nowrap;
+  line-height: 1;
 }
+@media (min-width: 1000px) { .logo-word { font-size: 19px; } }
 .logo-slot img {
   position: absolute;
   inset: 0;
@@ -904,7 +910,7 @@ nav:has(.nav-links > li:focus-within) { border-bottom-color: transparent; }
   object-fit: contain;
   background: inherit;
 }
-.logos--dark .logo-word { color: rgba(255, 255, 255, 0.55); }
+.logos--dark .logo-word { color: #fff; }
 .logos--dark .logo-slot img { filter: brightness(0) invert(1); opacity: 0.62; }
 .logos--light .logo-word { color: rgba(16, 16, 18, 0.42); }
 .logos--light .logo-slot img { filter: grayscale(1); opacity: 0.45; }
@@ -1019,7 +1025,7 @@ nav:has(.nav-links > li:focus-within) { border-bottom-color: transparent; }
 }
 .stat-row:last-child { border-bottom: 0; padding-bottom: 0; }
 .stat-row b { font-size: clamp(38px, 9vw, 68px); font-weight: 600; letter-spacing: -0.045em; line-height: 0.9; flex-shrink: 0; }
-.stat-row span { font-size: 14px; line-height: 1.45; color: var(--muted-d); }
+.stat-row span { font-size: 14px; line-height: 1.45; color: #fff;}
 @media (min-width: 1000px) {
   .stat-row { gap: 26px; padding: 34px 0; }
   .stat-row:first-child { padding-top: 0; }
@@ -1358,7 +1364,7 @@ footer { background: var(--surface); color: #fff; padding-bottom: 150px; margin-
 .testi-title { text-align: center; max-width: 15ch; margin: 0 auto 34px; }
 @media (min-width: 1000px) { .testi-title { max-width: 20ch; margin-bottom: 52px; } }
 .testi-rail { overflow: hidden; }
-.testi-track { display: flex; width: max-content; animation: testi-scroll 60s linear infinite; }
+.testi-track { display: flex; width: max-content; animation: testi-scroll 130s linear infinite; }
 .testi-rail.is-paused .testi-track { animation-play-state: paused; }  /* arrows only */
 .testi-set { display: flex; gap: 14px; padding-right: 14px; }
 @keyframes testi-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
@@ -1598,177 +1604,282 @@ body.modal-open { overflow: hidden; }
 }
 
 /* Hero media — two tiles + one floating card, fully contained -------------- */
+/* ==========================================================================
+   HERO STAGE — five compositions rebuilt 1:1 from the reference frames.
+   Everything inside the stage is sized in cqw against the stage width, so a
+   scene keeps its exact proportions at any viewport.
+   ========================================================================== */
 .hero-media {
   position: relative;
+  container-type: inline-size;
   width: 100%;
-  margin-top: 30px;
-  aspect-ratio: 1 / 0.92;
+  max-width: 560px;
+  margin: 20px auto 0;
+  aspect-ratio: 1 / 0.88;
 }
-@media (min-width: 1000px) { .hero-media { margin: 0; aspect-ratio: 1 / 0.9; } }
+@media (min-width: 1000px) { .hero-media { margin: 0; max-width: 620px; } }
 
-.hm-main, .hm-sub {
-  position: absolute;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #101012;
-  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
-}
-.hm-main { left: 0; top: 0; width: 76%; height: 62%; }
-.hm-sub  { right: 0; bottom: 0; width: 58%; height: 42%; }
-
-.hm-item {
+.hscene {
   position: absolute;
   inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 0.8s var(--ease);
-}
-.hm-item.is-on { opacity: 1; }
-@media (prefers-reduced-motion: reduce) { .hm-item { transition: none; } }
-
-/* the floating UI card, always in the same spot */
-.hm-cards { position: absolute; right: 0; top: 8%; width: 54%; max-width: 300px; }
-.hcard {
-  position: absolute;
-  right: 0; top: 0;
-  width: 100%;
-  padding: 16px 18px;
-  background: #fff;
-  color: #101012;
-  border-radius: 12px;
-  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.5);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(10px);
-  transition: opacity 0.5s var(--ease), transform 0.5s var(--ease), visibility 0.5s;
+  transition: opacity 0.45s var(--ease), visibility 0.45s;
 }
-.hcard.is-on { opacity: 1; visibility: visible; transform: none; }
-.hcard-ico { width: 20px; height: 20px; margin-bottom: 10px; }
-.hcard b { display: block; font-size: 28px; font-weight: 600; letter-spacing: -0.035em; line-height: 1; }
-.hcard > span { display: block; margin-top: 5px; font-size: 12.5px; color: #86868c; }
-.hcard-label { display: block; font-size: 12px; color: #86868c; }
-.hcard-row { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
-.hcard-row em { font-style: normal; font-size: 12.5px; font-weight: 600; color: #17a35a; }
-.hcard-spark { width: 100%; height: 42px; margin-top: 8px; }
-.hcard-spark path { fill: none; stroke: var(--gold-2); stroke-width: 3; stroke-linecap: round; }
-.hcard.is-on .hcard-spark path { stroke-dasharray: 260; stroke-dashoffset: 260; animation: draw 1.2s 0.25s cubic-bezier(0.4,0,0.2,1) forwards; }
-@keyframes draw { to { stroke-dashoffset: 0; } }
+.hscene.is-on { opacity: 1; visibility: visible; }
 
-.hcard--kit { text-align: left; }
-.hcard-aa { display: block; font-size: 34px; font-weight: 500; letter-spacing: -0.04em; line-height: 1; }
-.hcard-chips { display: flex; gap: 5px; margin-top: 12px; }
-.hcard-chips i { flex: 1; height: 20px; border-radius: 4px; }
+/* Pieces stagger in the FIRST time a scene appears. After that the scene has
+   already "built itself", so later turns are a plain crossfade — re-running
+   the stagger on every 7s loop is what made the rotation feel jumpy. */
+.hp { opacity: 0; transform: translateY(2.2cqw); }
+.hscene.is-on:not(.has-played) .hp {
+  animation: hp-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--hd, 0s);
+}
+.hscene.has-played .hp { opacity: 1; transform: none; }
+@keyframes hp-in { to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .hp { opacity: 1; transform: none; }
+  .hscene .hp { animation: none; }
+}
 
-.hcard--lead { display: flex; align-items: center; gap: 11px; }
-.hcard--lead img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-.hcard--lead strong { display: block; font-size: 14px; font-weight: 600; letter-spacing: -0.015em; }
-.hcard--lead span { display: block; margin-top: 1px; font-size: 11.5px; color: #86868c; }
-.hcard-tags { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
-.hcard-tags em {
-  font-style: normal; font-size: 10px; font-weight: 600;
-  padding: 3px 7px; border-radius: 5px;
-  border: 1px solid #e6e4df; color: #55555a;
+/* ── Shared: tablet shell ───────────────────────────────────────────────── */
+.htab {
+  position: absolute;
+  border-radius: 3.4cqw;
+  padding: 1.5cqw;
+  background: linear-gradient(160deg, #4c4c50 0%, #2a2a2d 55%, #3d3d41 100%);
+  box-shadow: 0 6cqw 12cqw rgba(0, 0, 0, 0.6);
 }
-.hcard-tags em.ok { background: #d8f3e3; border-color: #d8f3e3; color: #12703f; }
+.htab-screen { position: relative; overflow: hidden; border-radius: 2.1cqw; background: #17171a; }
+.htab-screen > img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-.hcard--note strong { display: block; font-size: 14.5px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 4px; }
-.hcard--note p { font-size: 12.5px; line-height: 1.45; color: #4a4a50; }
-.hcard-note-top { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
-.hcard-app { width: 20px; height: 20px; border-radius: 5px; background: #101012; display: grid; place-items: center; }
-.hcard-app svg { width: 12px; height: 12px; }
-.hcard-app-name { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #86868c; margin-right: auto; }
-.hcard-time { font-size: 10.5px; color: #a8a8ae; }
-
-.hcard--dock {
-  display: flex; gap: 9px; justify-content: center;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.45);
+/* ── Scene 1 · live site + domain pill + brand kit ──────────────────────── */
+.hs-site .htab { left: 3cqw; top: 18cqw; width: 76cqw; }
+.hs-site .htab-screen { aspect-ratio: 16 / 10.6; }
+.hs-site .htab-screen::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 34%, rgba(0, 0, 0, 0.52) 100%);
 }
-.hcard-app-ico {
-  width: 46px; height: 46px;
-  border-radius: 11px;
-  display: grid; place-items: center;
-  background: rgba(255, 255, 255, 0.18);
-  color: rgba(255, 255, 255, 0.8);
-}
-.hcard-app-ico svg { width: 21px; height: 21px; }
-.hcard-app-ico--brand {
-  background: #f6ead8; color: #3a2a12;
-  font-size: 16px; font-weight: 700; letter-spacing: -0.02em;
-}
-.hcard--dock.is-on .hcard-app-ico--brand { animation: app-bob 2.6s 0.7s ease-in-out infinite; }
-@keyframes app-bob {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  32% { transform: translateY(-12px) rotate(-4deg); }
-  62% { transform: translateY(3px) rotate(2deg); }
-}
-@media (prefers-reduced-motion: reduce) { .hcard--dock.is-on .hcard-app-ico--brand { animation: none; } }
-
-.hcard--domain {
-  width: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 13px 18px 13px 16px;
-  border-radius: 999px;
-  background: rgba(16, 16, 18, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
+.site-title {
+  position: absolute;
+  left: 0; right: 0; bottom: 5.2cqw;
+  z-index: 2;
+  text-align: center;
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 8.2cqw;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
   color: #fff;
 }
-.hcard-domain-ico { width: 16px; height: 16px; color: var(--gold-2); flex-shrink: 0; }
-.hcard-domain-text { font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
-
-/* Scattered client cards — three independently placed + rotated cards,
-   cascading down-left, instead of one boxed card. */
-.hcard--scatter { background: transparent; box-shadow: none; padding: 0; overflow: visible; }
-.scatter-item {
+.site-meta {
   position: absolute;
-  width: 172px;
-  padding: 12px 14px;
+  left: 0; right: 0; bottom: 2.6cqw;
+  z-index: 2;
+  text-align: center;
+  font-size: 1.9cqw;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.82);
+}
+.hs-site .domain-pill {
+  position: absolute;
+  left: 0; top: 28cqw;
+  z-index: 3;
+  display: flex; align-items: center; gap: 3.4cqw;
+  padding: 2.1cqw 2.6cqw 2.1cqw 3.6cqw;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(28, 28, 31, 0.72);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 3cqw 7cqw rgba(0, 0, 0, 0.45);
+}
+.domain-pill span { font-size: 3.1cqw; font-weight: 600; letter-spacing: -0.01em; color: #fff; white-space: nowrap; }
+.domain-pill svg { width: 3.6cqw; height: 3.6cqw; stroke: rgba(255, 255, 255, 0.85); stroke-width: 1.8; fill: none; flex-shrink: 0; }
+.hs-site .kit-card {
+  position: absolute;
+  right: 0; top: 0;
+  z-index: 4;
+  width: 27cqw;
+  padding: 2.6cqw;
+  border-radius: 3.4cqw;
   background: #fff;
-  color: #101012;
-  border-radius: 11px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.38);
+  box-shadow: 0 4cqw 9cqw rgba(0, 0, 0, 0.4);
 }
-.scatter-item strong { display: block; font-size: 12.5px; font-weight: 600; letter-spacing: -0.01em; }
-.scatter-item small { display: block; margin-top: 1px; font-size: 10.5px; color: #86868c; }
-.scatter-item .stag { display: flex; align-items: center; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
-.scatter-item .stag em {
-  font-style: normal; font-size: 9.5px; font-weight: 700;
-  padding: 3px 7px; border-radius: 999px;
-  background: #eef0f3; color: #55555a;
-}
-.scatter-item .stag em.ok { background: #d8f3e3; color: #12703f; }
-.scatter-1 { top: 0; right: 14px; width: 158px; opacity: 0.92; transform: rotate(-3deg); z-index: 1; }
-.scatter-2 { top: 96px; right: 66px; width: 196px; transform: rotate(1.5deg); z-index: 3; }
-.scatter-3 { top: 218px; right: 150px; width: 156px; opacity: 0.92; transform: rotate(-2deg); z-index: 2; }
-@media (max-width: 999px) {
-  .scatter-1 { right: 6px; width: 146px; }
-  .scatter-2 { top: 84px; right: 36px; width: 178px; }
-  .scatter-3 { top: 196px; right: 96px; width: 142px; }
+.kit-aa { display: block; text-align: center; font-size: 11cqw; font-weight: 400; line-height: 1.05; letter-spacing: -0.03em; color: #101012; }
+.kit-swatches { display: flex; gap: 0.7cqw; margin-top: 1.8cqw; }
+.kit-swatches i { height: 3.6cqw; border-radius: 0.7cqw; }
+.kit-swatches i:nth-child(1) { flex: 3; background: #9a9276; }
+.kit-swatches i:nth-child(2) { flex: 2.2; background: #17171a; }
+.kit-swatches i:nth-child(3) { flex: 1; background: #e8d3c8; }
+
+/* ── Shared: dark device shell used by the selection + notification cards ── */
+.hshell {
+  position: absolute;
+  border-radius: 3.6cqw;
+  padding: 1.5cqw;
+  background: #262629;
+  box-shadow: 0 6cqw 13cqw rgba(0, 0, 0, 0.62);
 }
 
-/* Itemized value/report card — label, line items, highlighted total, CTA */
-.hcard--report { text-align: left; }
-.hcard-report-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; color: #55555a; padding: 6px 0; border-bottom: 1px solid #efeee9; }
-.hcard-report-row b { font-size: 13px; font-weight: 600; color: #101012; }
-.hcard-report-total { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; padding-top: 10px; border-top: 1.5px solid #101012; }
-.hcard-report-total span { font-size: 11.5px; color: #55555a; }
-.hcard-report-total strong { font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: #12703f; }
-.hcard-report-btn {
-  display: block; width: 100%; margin-top: 12px;
-  padding: 10px; border: none; border-radius: 8px;
-  background: #101012; color: #fff;
-  font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
-  font-family: inherit; cursor: default;
+/* ── Scene 2 · selection panel ──────────────────────────────────────────── */
+.hs-select .hshell { left: 2cqw; right: 2cqw; top: 50%; transform: translateY(-50%); }
+.hs-select.is-on:not(.has-played) .hshell { animation-name: hp-in-centred; }
+.hs-select.has-played .hshell,
+.hs-note.has-played .hshell { opacity: 1; transform: translateY(-50%); }
+@keyframes hp-in-centred {
+  from { opacity: 0; transform: translateY(calc(-50% + 2.2cqw)); }
+  to { opacity: 1; transform: translateY(-50%); }
 }
+.sel-panel { background: #fff; border-radius: 2.6cqw; padding: 2.8cqw 3cqw 1.4cqw; }
+.sel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.8cqw; }
+.sel-head strong { font-size: 3.5cqw; font-weight: 600; letter-spacing: -0.02em; color: #101012; }
+.sel-head i { display: block; width: 2.6cqw; height: 0.32cqw; border-radius: 2px; background: #4a4a50; }
+.sel-row { display: flex; align-items: center; gap: 2.4cqw; padding: 1.7cqw 0; }
+.sel-row + .sel-row { border-top: 1px solid #f0efec; }
+.sel-row > img { width: 11cqw; height: 8.4cqw; border-radius: 1.4cqw; object-fit: cover; flex-shrink: 0; }
+.sel-info { flex: 1; min-width: 0; }
+.sel-price { display: flex; align-items: center; gap: 1.7cqw; }
+.sel-price b { font-size: 3.6cqw; font-weight: 700; letter-spacing: -0.03em; color: #101012; }
+.sel-price em {
+  font-style: normal;
+  font-size: 2.1cqw;
+  padding: 0.5cqw 1.3cqw;
+  border: 1px solid #dcdbd6;
+  border-radius: 99px;
+  color: #3d3d42;
+  white-space: nowrap;
+}
+.sel-spec { margin-top: 0.5cqw; font-size: 2.4cqw; color: #86868c; }
+.sel-addr { margin-top: 0.2cqw; font-size: 2.4cqw; color: #86868c; }
+.sel-grip { display: grid; grid-template-columns: repeat(2, 0.9cqw); gap: 0.55cqw; flex-shrink: 0; }
+.sel-grip i { width: 0.9cqw; height: 0.9cqw; border-radius: 50%; background: #c8c7c2; }
+.sel-bar { display: flex; align-items: center; gap: 1.8cqw; padding: 2.1cqw 1.4cqw 0.7cqw; }
+.sel-count {
+  display: flex; align-items: center; gap: 1.8cqw;
+  padding: 1.5cqw 3cqw;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 1.8cqw;
+  font-size: 2.7cqw; font-weight: 600; color: #fff;
+}
+.sel-save { display: flex; align-items: center; gap: 1.2cqw; margin-left: auto; font-size: 2.7cqw; color: rgba(255, 255, 255, 0.9); }
+.sel-share {
+  display: flex; align-items: center; gap: 1.2cqw;
+  padding: 1.5cqw 3cqw;
+  border-radius: 1.8cqw;
+  background: #fff;
+  font-size: 2.7cqw; font-weight: 600; color: #101012;
+}
+.sel-bar svg { width: 3cqw; height: 3cqw; fill: none; stroke-width: 1.9; flex-shrink: 0; }
+.sel-count svg, .sel-save svg { stroke: currentColor; }
+.sel-share svg { stroke: none; fill: #101012; }
+
+/* ── Scene 3 · push notification (stacked shell) ────────────────────────── */
+.hs-note .hshell { left: 2cqw; right: 2cqw; top: 50%; transform: translateY(-50%); }
+.hs-note.is-on:not(.has-played) .hshell { animation-name: hp-in-centred; }
+.hs-note .hshell::before,
+.hs-note .hshell::after {
+  content: '';
+  position: absolute;
+  left: 6cqw; right: 6cqw;
+  height: 3cqw;
+  border-radius: 0 0 3cqw 3cqw;
+  background: #202023;
+  z-index: -1;
+}
+.hs-note .hshell::before { bottom: -2.4cqw; }
+.hs-note .hshell::after { left: 12cqw; right: 12cqw; bottom: -4.4cqw; background: #191a1c; }
+.note-card { background: #fff; border-radius: 2.6cqw; padding: 3cqw 3.2cqw 2.4cqw; }
+.note-top { display: flex; align-items: center; gap: 1.8cqw; margin-bottom: 2cqw; }
+.note-ico { width: 4.4cqw; height: 4.4cqw; border-radius: 1.1cqw; background: #101012; display: grid; place-items: center; flex-shrink: 0; }
+.note-ico svg { width: 2.6cqw; height: 2.6cqw; fill: none; stroke: #fff; stroke-width: 1.7; }
+.note-app { font-size: 2.3cqw; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: #86868c; margin-right: auto; }
+.note-time { font-size: 2.3cqw; color: #a8a8ae; }
+.note-card strong { display: block; font-size: 3.5cqw; font-weight: 700; letter-spacing: -0.025em; line-height: 1.2; color: #101012; }
+.note-card strong em { font-style: normal; font-weight: 400; }
+.note-card p { margin-top: 0.8cqw; font-size: 3.2cqw; line-height: 1.4; letter-spacing: -0.015em; color: #101012; }
+.note-more { display: block; margin-top: 1.8cqw; font-size: 2.6cqw; color: #b4b4b9; }
+
+/* ── Scene 4 · story video + client collage ─────────────────────────────── */
+.hs-collage .col-main {
+  position: absolute;
+  left: 1cqw; top: 10cqw;
+  width: 80cqw;
+  aspect-ratio: 16 / 10;
+  border-radius: 2.4cqw;
+  overflow: hidden;
+  box-shadow: 0 5cqw 11cqw rgba(0, 0, 0, 0.55);
+}
+.hs-collage .col-main img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hs-collage .col-s {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 1.4cqw;
+  box-shadow: 0 3cqw 7cqw rgba(0, 0, 0, 0.5);
+}
+.hs-collage .col-s img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hs-collage .col-a { left: 32cqw; top: 58cqw; width: 15cqw; aspect-ratio: 3 / 4; }
+.hs-collage .col-b { left: 49cqw; top: 54cqw; width: 27cqw; aspect-ratio: 4 / 4.4; z-index: 2; }
+.hs-collage .col-c { left: 78cqw; top: 60cqw; width: 21cqw; aspect-ratio: 4 / 3.6; }
+
+/* ── Scene 5 · vertical reel + views stat ───────────────────────────────── */
+.hs-reel .htab { left: 4cqw; top: 6cqw; width: 48cqw; }
+.hs-reel .htab-screen { aspect-ratio: 3 / 4.1; }
+.reel-play {
+  position: absolute;
+  left: 50%; top: 44%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  width: 15cqw; height: 15cqw;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.38);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  display: grid; place-items: center;
+}
+.reel-play svg { width: 6cqw; height: 6cqw; fill: #fff; margin-left: 0.7cqw; }
+.reel-cap {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 2;
+  padding: 2.4cqw 2.4cqw 2.8cqw;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.35) 40%);
+}
+.reel-cap-top { display: flex; align-items: baseline; gap: 2cqw; }
+.reel-cap-top strong { font-size: 3.2cqw; font-weight: 600; letter-spacing: -0.02em; color: #fff; white-space: nowrap; }
+.reel-cap-top em { font-style: normal; font-size: 2.4cqw; color: rgba(255, 255, 255, 0.9); }
+.reel-skel { display: block; height: 1.9cqw; margin-top: 1.2cqw; border-radius: 99px; background: rgba(255, 255, 255, 0.78); }
+.reel-skel--b { width: 72%; }
+.reel-skel--c { width: 52%; }
+.hs-reel .stat-card {
+  position: absolute;
+  right: 0; top: 12cqw;
+  z-index: 3;
+  width: 51cqw;
+  padding: 3.2cqw 3.4cqw 3.4cqw;
+  border-radius: 3cqw;
+  background: #fff;
+  box-shadow: 0 5cqw 11cqw rgba(0, 0, 0, 0.45);
+}
+.stat-head { display: flex; align-items: center; justify-content: space-between; gap: 1.4cqw; }
+.stat-head svg { width: 4.4cqw; height: 4.4cqw; fill: none; stroke: #101012; stroke-width: 1.7; flex-shrink: 0; }
+.stat-since { font-size: 2.3cqw; color: #a2a2a8; white-space: nowrap; }
+.stat-row { display: flex; align-items: flex-start; gap: 0.9cqw; margin-top: 2.2cqw; }
+.stat-row b { font-size: 8cqw; font-weight: 700; letter-spacing: -0.04em; line-height: 1; color: #fff; }
+.stat-up { width: 2.4cqw; height: 2.4cqw; fill: none; stroke: #2f7d4f; stroke-width: 2.4; margin-top: 0.6cqw; flex-shrink: 0; }
+.stat-label { display: block; margin-top: 0.9cqw; font-size: 3cqw; color: #86868c; }
+.stat-list { margin-top: 2.6cqw; border-top: 1px solid #edece8; }
+.stat-line {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1.4cqw;
+  padding: 1.5cqw 0;
+  font-size: 2.7cqw;
+  color: #6c6c72;
+}
+.stat-line + .stat-line { border-top: 1px solid #f4f3f0; }
+.stat-line b { font-size: 3cqw; font-weight: 700; letter-spacing: -0.02em; color: #101012; }
+.stat-line--sum strong { font-size: 3cqw; font-weight: 700; letter-spacing: -0.02em; color: #2f7d4f; }
 
 /* Hero layout — text left, media right, both inside the grid --------------- */
 .hero-h1 {
@@ -1784,8 +1895,12 @@ body.modal-open { overflow: hidden; }
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 56px;
     align-items: center;
-    padding: 80px var(--gut);
+    /* Sits closer under the nav — the old 80px left a dead band across the top. */
+    padding: 34px var(--gut) 56px;
   }
+  /* The hero no longer has to fill the full viewport, which is what was
+     pushing both columns down toward the middle. */
+  .hero { min-height: 0; }
   .hero-text { max-width: 620px; }
   .hero .eyebrow, .hero .hero-accent, .hero .proof { display: none; }
   .hero-h1 { font-size: clamp(40px, 3.6vw, 62px); margin-bottom: 26px; }
@@ -1805,7 +1920,16 @@ body.modal-open { overflow: hidden; }
 }
 @media (min-width: 700px) { .stories-stage { aspect-ratio: 16 / 9; } }
 @media (min-width: 1300px) { .stories-stage { aspect-ratio: 21 / 9; } }
-.stories-media { width: 100%; height: 100%; object-fit: cover; }
+.stories-media { position: relative; width: 100%; height: 100%; }
+.smedia {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.55s var(--ease);
+}
+.smedia.is-on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .smedia { transition: none; } }
 .stories-stage::after {
   content: '';
   position: absolute; inset: 0;
@@ -1859,8 +1983,10 @@ body.modal-open { overflow: hidden; }
 @media (min-width: 1000px) { .stories-thumbs { gap: 18px; padding: 22px 52px; } }
 .sthumb {
   flex: 0 0 auto;
-  display: flex; align-items: center; gap: 14px;
+  display: flex; align-items: flex-start; gap: 14px;
   width: 260px;
+  height: auto;
+  min-height: 82px;
   padding: 12px;
   border-radius: 14px;
   border: 1px solid transparent;
@@ -1871,12 +1997,23 @@ body.modal-open { overflow: hidden; }
   transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 @media (min-width: 1000px) { .sthumb { width: 300px; padding: 14px; } }
-.sthumb img { width: 54px; height: 54px; border-radius: 9px; object-fit: cover; flex-shrink: 0; opacity: 0.4; transition: opacity 0.2s var(--ease); }
+.sthumb-avatar { width: 54px; height: 54px; border-radius: 9px; object-fit: cover; flex-shrink: 0; opacity: 0.4; transition: opacity 0.2s var(--ease); }
+.sthumb-logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 9px;
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 6px;
+  margin-bottom: 7px;
+}
+.sthumb-logo { display: block; height: 13px; width: auto; max-width: 90px; object-fit: contain; }
 .sthumb strong { display: block; font-size: 15px; font-weight: 600; color: #fff; letter-spacing: -0.015em; }
 .sthumb em { display: block; font-style: normal; font-size: 12.5px; line-height: 1.35; color: rgba(255, 255, 255, 0.6); margin-top: 3px; }
 .sthumb:hover { background: rgba(255, 255, 255, 0.14); }
 .sthumb.is-active { background: rgba(255, 255, 255, 0.13); border-color: rgba(255, 255, 255, 0.55); }
-.sthumb.is-active img { opacity: 1; }
+.sthumb.is-active .sthumb-avatar { opacity: 1; }
 
 /* ==========================================================================
    CTA panel — frosted glass over the photo
@@ -2638,104 +2775,125 @@ body.modal-open { overflow: hidden; }
         </div>
 
         <div class="hero-media" id="heroMedia" aria-hidden="true">
-            <div class="hm-main">
-                <video class="hm-item is-on" muted loop playsinline preload="none" poster="Brand2.jpg" id="hmVideo">
-                    <source src="8523640-hd_1920_1080_25fps.mp4" type="video/mp4">
-                </video>
-                <img class="hm-item" src="Brand2.jpg" alt="">
-                <img class="hm-item" src="Paid.jpg" alt="">
-                <img class="hm-item" src="Blog3.jpg" alt="">
-                <img class="hm-item" src="seo.jpg" alt="">
-                <img class="hm-item" src="Blog2.jpg" alt="">
+
+            <!-- 1 · live client site, domain pill, brand kit -->
+            <div class="hscene hs-site is-on">
+                <div class="htab hp" style="--hd:.05s">
+                    <div class="htab-screen">
+                        <img src="Brand2.jpg" alt="" decoding="async">
+                        <span class="site-title">Rivera Roofing</span>
+                        <span class="site-meta">Forney, TX &nbsp;&middot;&nbsp; Full site + CRM &nbsp;&middot;&nbsp; Live in 4 weeks</span>
+                    </div>
+                </div>
+                <div class="domain-pill hp" style="--hd:.30s">
+                    <span>riveraroofing.com</span>
+                    <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M9 15 15 9M10 6l1-1a4 4 0 0 1 5.7 5.7l-1 1M14 18l-1 1A4 4 0 1 1 7.3 13.3l1-1"/></svg>
+                </div>
+                <div class="kit-card hp" style="--hd:.44s">
+                    <span class="kit-aa">Aa</span>
+                    <div class="kit-swatches"><i></i><i></i><i></i></div>
+                </div>
             </div>
 
-            <div class="hm-sub">
-                <img class="hm-item is-on" src="Blog1.jpg" alt="">
-                <img class="hm-item" src="seo.jpg" alt="">
-                <img class="hm-item" src="Blog2.jpg" alt="">
-                <img class="hm-item" src="sara-kurfess-6lcT2kRPvnI-unsplash.jpg" alt="">
-                <img class="hm-item" src="Paid.jpg" alt="">
-                <img class="hm-item" src="Brand2.jpg" alt="">
+            <!-- 2 · quote selection panel -->
+            <div class="hscene hs-select">
+                <div class="hshell hp" style="--hd:.05s">
+                    <div class="sel-panel">
+                        <div class="sel-head"><strong>Selection</strong><i></i></div>
+
+                        <div class="sel-row hp" style="--hd:.24s">
+                            <img src="Blog1.jpg" alt="" loading="lazy" decoding="async">
+                            <div class="sel-info">
+                                <div class="sel-price"><b>$8,400</b><em>Active</em></div>
+                                <div class="sel-spec">14 pages &middot; CRM &middot; SEO setup</div>
+                                <div class="sel-addr">Rivera Roofing Co., Forney, TX</div>
+                            </div>
+                            <span class="sel-grip"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        </div>
+
+                        <div class="sel-row hp" style="--hd:.34s">
+                            <img src="Paid.jpg" alt="" loading="lazy" decoding="async">
+                            <div class="sel-info">
+                                <div class="sel-price"><b>$12,250</b><em>Active</em></div>
+                                <div class="sel-spec">Store build &middot; 240 products &middot; Stripe</div>
+                                <div class="sel-addr">Whitfield Interiors, Rockwall, TX</div>
+                            </div>
+                            <span class="sel-grip"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+                        </div>
+                    </div>
+
+                    <div class="sel-bar hp" style="--hd:.46s">
+                        <span class="sel-count">
+                            <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                            2 selected
+                        </span>
+                        <span class="sel-save">
+                            <svg viewBox="0 0 24 24" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                            Save
+                        </span>
+                        <span class="sel-share">
+                            <svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg>
+                            Share
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            <div class="hm-cards">
-                <!-- 1 · views -->
-                <div class="hcard is-on">
-                    <svg class="hcard-ico" viewBox="0 0 24 24" fill="none" stroke="#101012" stroke-width="1.7" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                    <b data-hero-count="67" data-suffix="K">0</b>
-                    <span>Views this month</span>
-                </div>
-                <!-- 2 · brand kit -->
-                <div class="hcard hcard--kit">
-                    <span class="hcard-aa">Aa</span>
-                    <div class="hcard-chips"><i style="background:#9a9276"></i><i style="background:#17171a"></i><i style="background:#e8d3c8"></i></div>
-                </div>
-                <!-- 3 · total leads -->
-                <div class="hcard">
-                    <span class="hcard-label">Total leads</span>
-                    <div class="hcard-row"><b data-hero-count="1211">0</b><em>+42%</em></div>
-                    <svg class="hcard-spark" viewBox="0 0 200 60" preserveAspectRatio="none">
-                        <path d="M4,52 C34,46 42,26 66,28 C90,30 96,50 124,38 C152,26 168,12 196,7"/>
-                    </svg>
-                </div>
-                <!-- 4 · lead row -->
-                <div class="hcard hcard--lead">
-                    <img src="https://i.pravatar.cc/80?img=32" alt="">
-                    <div>
-                        <strong>Marcus Rivera</strong>
-                        <span>Requested a callback</span>
-                        <div class="hcard-tags"><em class="ok">97 Excellent</em><em>Client</em></div>
+            <!-- 3 · push notification -->
+            <div class="hscene hs-note">
+                <div class="hshell hp" style="--hd:.05s">
+                    <div class="note-card">
+                        <div class="note-top hp" style="--hd:.24s">
+                            <span class="note-ico"><svg viewBox="0 0 24 24"><path d="M12 3 3 7.5v9L12 21l9-4.5v-9L12 3Z"/></svg></span>
+                            <span class="note-app">Diamondback CRM</span>
+                            <span class="note-time">1m ago</span>
+                        </div>
+                        <strong class="hp" style="--hd:.34s">Your lead is ready to <em>schedule a call</em></strong>
+                        <p class="hp" style="--hd:.42s">Hey Taylor, your daily lead summary is ready. Three prospects replied overnight and two asked for pricing.</p>
+                        <span class="note-more hp" style="--hd:.52s">3 more notifications</span>
                     </div>
-                </div>
-                <!-- 5 · notification -->
-                <div class="hcard hcard--note">
-                    <div class="hcard-note-top">
-                        <span class="hcard-app"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"><path d="M12 3 3 7.5v9L12 21l9-4.5v-9L12 3Z"/></svg></span>
-                        <span class="hcard-app-name">Diamondback CRM</span>
-                        <span class="hcard-time">1m ago</span>
-                    </div>
-                    <strong>Your lead is ready to schedule</strong>
-                    <p>Three prospects replied overnight.</p>
-                </div>
-                <!-- 6 · branded app -->
-                <div class="hcard hcard--dock">
-                    <span class="hcard-app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
-                    <span class="hcard-app-ico hcard-app-ico--brand">DB</span>
-                    <span class="hcard-app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><path d="m16 8-6 2-2 6 6-2z"/></svg></span>
-                    <span class="hcard-app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3z"/></svg></span>
-                </div>
-                <!-- 7 · live domain chip -->
-                <div class="hcard hcard--domain">
-                    <span class="hcard-domain-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 15 15 9M10 6l1-1a4 4 0 0 1 5.7 5.7l-1 1M14 18l-1 1A4 4 0 1 1 7.3 13.3l1-1"/></svg></span>
-                    <span class="hcard-domain-text">yourbrand.com</span>
-                </div>
-                <!-- 8 · scattered client cards -->
-                <div class="hcard hcard--scatter">
-                    <div class="scatter-item scatter-1">
-                        <strong>Emily Carter</strong>
-                        <small>Shared a listing &middot; Yesterday</small>
-                        <div class="stag"><em class="ok">84 Excellent</em></div>
-                    </div>
-                    <div class="scatter-item scatter-2">
-                        <strong>Kelly Hampton</strong>
-                        <small>Booked a call &middot; Yesterday</small>
-                        <div class="stag"><em class="ok">97 Excellent</em><em>Client</em></div>
-                    </div>
-                    <div class="scatter-item scatter-3">
-                        <strong>Thomas Philip</strong>
-                        <small>Created account &middot; Yesterday</small>
-                        <div class="stag"><em>67 Good</em><em>Lead</em></div>
-                    </div>
-                </div>
-                <!-- 9 · project value report -->
-                <div class="hcard hcard--report">
-                    <span class="hcard-label">Campaign performance</span>
-                    <div class="hcard-report-row"><span>Leads generated</span><b data-hero-count="1847">0</b></div>
-                    <div class="hcard-report-row"><span>Conversion rate</span><b>+18%</b></div>
-                    <div class="hcard-report-total"><span>Est. revenue impact</span><strong>$412,000</strong></div>
-                    <button type="button" class="hcard-report-btn" tabindex="-1">Get a proposal</button>
                 </div>
             </div>
+
+            <!-- 4 · client story video + collage -->
+            <div class="hscene hs-collage">
+                <div class="col-main hp" style="--hd:.05s"><img src="Blog3.jpg" alt="" loading="lazy" decoding="async"></div>
+                <div class="col-s col-a hp" style="--hd:.30s"><img src="Blog2.jpg" alt="" loading="lazy" decoding="async"></div>
+                <div class="col-s col-b hp" style="--hd:.40s"><img src="sara-kurfess-6lcT2kRPvnI-unsplash.jpg" alt="" loading="lazy" decoding="async"></div>
+                <div class="col-s col-c hp" style="--hd:.50s"><img src="seo.jpg" alt="" loading="lazy" decoding="async"></div>
+            </div>
+
+            <!-- 5 · sponsored reel + views stat -->
+            <div class="hscene hs-reel">
+                <div class="htab hp" style="--hd:.05s">
+                    <div class="htab-screen">
+                        <img src="Paid.jpg" alt="" loading="lazy" decoding="async">
+                        <span class="reel-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+                        <div class="reel-cap">
+                            <div class="reel-cap-top"><strong>Rivera Roofing</strong><em>Sponsored</em></div>
+                            <span class="reel-skel reel-skel--b"></span>
+                            <span class="reel-skel reel-skel--c"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card hp" style="--hd:.34s">
+                    <div class="stat-head">
+                        <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <span class="stat-since">Last 30 days</span>
+                    </div>
+                    <div class="stat-row">
+                        <b data-hero-count="60" data-suffix="K">0</b>
+                        <svg class="stat-up" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>
+                    </div>
+                    <span class="stat-label">Views on this campaign</span>
+                    <div class="stat-list">
+                        <div class="stat-line"><span>Clicks to site</span><b data-hero-count="2140">0</b></div>
+                        <div class="stat-line"><span>New leads</span><b data-hero-count="128">0</b></div>
+                        <div class="stat-line stat-line--sum"><span>Cost per lead</span><strong>$9.40</strong></div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </header>
@@ -2745,88 +2903,88 @@ body.modal-open { overflow: hidden; }
         <div class="logos-mask">
             <div class="logo-track">
                 <div class="logo-set">
-                    <span class="logo-slot"><span class="logo-word">Google</span><img src="assets/google.svg" alt="Google" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="Microsoft" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="Amazon" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">React</span><img src="assets/react.svg" alt="React" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="Vue" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="Node.js" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Shopify</span><img src="assets/shopify.svg" alt="Shopify" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="Stripe" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="Twilio" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="MongoDB" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="PostgreSQL" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="Sass" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/google.svg" alt="Google logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/microsoft.svg" alt="Microsoft logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/amazon.svg" alt="Amazon logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/react.svg" alt="React logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/vue.svg" alt="Vue logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/nodejs.svg" alt="Node.js logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/shopify.svg" alt="Shopify logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/stripe.svg" alt="Stripe logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/twilio.svg" alt="Twilio logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/mongodb.svg" alt="MongoDB logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/postgresql.svg" alt="PostgreSQL logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/sass.svg" alt="Sass logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
                 <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Google</span><img src="assets/google.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">React</span><img src="assets/react.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Shopify</span><img src="assets/shopify.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
                 <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Google</span><img src="assets/google.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">React</span><img src="assets/react.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Shopify</span><img src="assets/shopify.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
                 <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Google</span><img src="assets/google.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">React</span><img src="assets/react.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Shopify</span><img src="assets/shopify.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
                 <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Google</span><img src="assets/google.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">React</span><img src="assets/react.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Shopify</span><img src="assets/shopify.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
                 <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Google</span><img src="assets/google.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">React</span><img src="assets/react.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Shopify</span><img src="assets/shopify.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
             </div>
         </div>
@@ -2947,9 +3105,11 @@ body.modal-open { overflow: hidden; }
 <!-- ═══════════════ CLIENT STORY VIDEO ═══════════════ -->
 <section class="stories" id="stories">
     <div class="stories-stage">
-        <video class="stories-media" id="storyVideo" autoplay muted loop playsinline preload="none" poster="Brand2.jpg">
-            <source src="8523640-hd_1920_1080_25fps.mp4" type="video/mp4">
-        </video>
+        <div class="stories-media" id="storyMedia">
+            <img class="smedia is-on" src="Brand2.jpg" alt="" decoding="async">
+            <img class="smedia" src="Blog3.jpg" alt="" loading="lazy" decoding="async">
+            <img class="smedia" src="Blog1.jpg" alt="" loading="lazy" decoding="async">
+        </div>
 
         <div class="stories-name">
             <strong id="storyName">Marcus Rivera</strong>
@@ -2962,17 +3122,29 @@ body.modal-open { overflow: hidden; }
         </div>
 
         <div class="stories-thumbs" id="storyThumbs">
-            <button type="button" class="sthumb" data-name="Sarah Kim" data-role="Practice Manager, Bluebonnet Dental">
-                <img src="https://i.pravatar.cc/120?img=47" alt="" loading="lazy">
-                <span><strong>Sarah Kim</strong><em>Practice Manager, Bluebonnet Dental</em></span>
+            <button type="button" class="sthumb" data-slide="1" data-name="Sarah Kim" data-role="Practice Manager, Bluebonnet Dental">
+                <img class="sthumb-avatar" src="https://i.pravatar.cc/120?img=47" alt="" loading="lazy">
+                <span>
+                    <span class="sthumb-logo-wrap"><img class="sthumb-logo" src="assets/bluebonnet-dental-logo.png" alt="Bluebonnet Dental logo" loading="lazy" onerror="this.closest('.sthumb-logo-wrap').style.display='none'"></span>
+                    <strong>Sarah Kim</strong>
+                    <em>Practice Manager, Bluebonnet Dental</em>
+                </span>
             </button>
-            <button type="button" class="sthumb" data-name="Dana Whitfield" data-role="Founder, Whitfield Interiors">
-                <img src="https://i.pravatar.cc/120?img=58" alt="" loading="lazy">
-                <span><strong>Dana Whitfield</strong><em>Founder, Whitfield Interiors</em></span>
+            <button type="button" class="sthumb" data-slide="2" data-name="Dana Whitfield" data-role="Founder, Whitfield Interiors">
+                <img class="sthumb-avatar" src="https://i.pravatar.cc/120?img=58" alt="" loading="lazy">
+                <span>
+                    <span class="sthumb-logo-wrap"><img class="sthumb-logo" src="assets/whitfield-interiors-logo.png" alt="Whitfield Interiors logo" loading="lazy" onerror="this.closest('.sthumb-logo-wrap').style.display='none'"></span>
+                    <strong>Dana Whitfield</strong>
+                    <em>Founder, Whitfield Interiors</em>
+                </span>
             </button>
-            <button type="button" class="sthumb is-active" data-name="Marcus Rivera" data-role="Owner, Rivera Roofing Co.">
-                <img src="https://i.pravatar.cc/120?img=32" alt="" loading="lazy">
-                <span><strong>Marcus Rivera</strong><em>Owner, Rivera Roofing Co.</em></span>
+            <button type="button" class="sthumb is-active" data-slide="0" data-name="Marcus Rivera" data-role="Owner, Rivera Roofing Co.">
+                <img class="sthumb-avatar" src="https://i.pravatar.cc/120?img=32" alt="" loading="lazy">
+                <span>
+                    <span class="sthumb-logo-wrap"><img class="sthumb-logo" src="assets/rivera-roofing-logo.png" alt="Rivera Roofing Co. logo" loading="lazy" onerror="this.closest('.sthumb-logo-wrap').style.display='none'"></span>
+                    <strong>Marcus Rivera</strong>
+                    <em>Owner, Rivera Roofing Co.</em>
+                </span>
             </button>
         </div>
     </div>
@@ -3225,88 +3397,88 @@ body.modal-open { overflow: hidden; }
         <div class="logos-mask">
             <div class="logo-track">
                 <div class="logo-set">
-                    <span class="logo-slot"><span class="logo-word">Google</span><img src="assets/google.svg" alt="Google" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="Microsoft" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="Amazon" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">React</span><img src="assets/react.svg" alt="React" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="Vue" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="Node.js" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Shopify</span><img src="assets/shopify-svgrepo-com.svg" alt="Shopify" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="Stripe" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="Twilio" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="MongoDB" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="PostgreSQL" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="Sass" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/google.svg" alt="Google logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/microsoft.svg" alt="Microsoft logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/amazon.svg" alt="Amazon logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/react.svg" alt="React logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/vue.svg" alt="Vue logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/nodejs.svg" alt="Node.js logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/shopify.svg" alt="Shopify logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/stripe.svg" alt="Stripe logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/twilio.svg" alt="Twilio logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/mongodb.svg" alt="MongoDB logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/postgresql.svg" alt="PostgreSQL logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot"><img class="logo-img" src="assets/sass.svg" alt="Sass logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
                 <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Google</span><img src="assets/google.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">React</span><img src="assets/react.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Shopify</span><img src="assets/shopify-svgrepo-com.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
                 <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Google</span><img src="assets/google.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">React</span><img src="assets/react.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Shopify</span><img src="assets/shopify-svgrepo-com.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
                 <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Google</span><img src="assets/google.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">React</span><img src="assets/react.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Shopify</span><img src="assets/shopify-svgrepo-com.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
                 <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Google</span><img src="assets/google.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">React</span><img src="assets/react.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Shopify</span><img src="assets/shopify-svgrepo-com.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
                 <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Google</span><img src="assets/google.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Microsoft</span><img src="assets/microsoft.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Amazon</span><img src="assets/amazon.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">React</span><img src="assets/react.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Vue</span><img src="assets/vue.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Node.js</span><img src="assets/node.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Shopify</span><img src="assets/shopify-svgrepo-com.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Stripe</span><img src="assets/stripe.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Twilio</span><img src="assets/twilio.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">MongoDB</span><img src="assets/mongodb.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">PostgreSQL</span><img src="assets/postgresql.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
-                    <span class="logo-slot" aria-hidden="true"><span class="logo-word">Sass</span><img src="assets/sass.svg" alt="" onload="this.previousElementSibling.style.display='none'" onerror="this.remove()"></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
+                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
                 </div>
             </div>
         </div>
@@ -5027,8 +5199,26 @@ document.addEventListener('keydown', function(e) {
     });
   });
 
-  /* ---- Nav surface is fixed (--surface) so it always matches the mega menu.
-         The old scroll tint that forced #000 has been removed. ---- */
+  /* ---- Nav surface: black at rest, shared gray while a mega menu is open.
+         Handled in CSS via :has(); this mirrors it with a class so older
+         browsers without :has() support behave the same. The old scroll
+         handlers that forced an inline #000 have been removed. ---- */
+  (function () {
+    if (!nav) return;
+    var parents = nav.querySelectorAll('.nav-links > li');
+    function sync() {
+      var open = false;
+      parents.forEach(function (li) {
+        if (li.matches(':hover') || li.querySelector(':focus-within') || li.matches(':focus-within')) open = true;
+      });
+      nav.classList.toggle('mega-open', open);
+    }
+    parents.forEach(function (li) {
+      ['mouseenter', 'mouseleave', 'focusin', 'focusout'].forEach(function (evt) {
+        li.addEventListener(evt, function () { requestAnimationFrame(sync); });
+      });
+    });
+  })();
 
   /* ---- Mobile action bar ---- */
   function overlayOpen() {
@@ -5093,8 +5283,11 @@ document.addEventListener('keydown', function(e) {
 
   var io = new IntersectionObserver(function (entries) {
     entries.forEach(function (e) {
-      if (e.isIntersecting) { run(e.target); }          // replays on every pass
-      else { e.target.textContent = '0' + (e.target.dataset.suffix || ''); }
+      // Count once, the first time it scrolls into view, then stop watching.
+      // (This used to reset to 0 and re-run on every single pass.)
+      if (!e.isIntersecting) return;
+      run(e.target);
+      io.unobserve(e.target);
     });
   }, { threshold: 0.4 });
   nums.forEach(function (n) { io.observe(n); });
@@ -5146,22 +5339,18 @@ document.addEventListener('keydown', function(e) {
   targets.forEach(function (t) { io.observe(t); });
 })();
 
-/* ── Hero media + floating card ────────────────────────────────────────── */
+/* ── Hero stage: five compositions, one on at a time ───────────────────── */
 (function () {
   var wrap = document.getElementById('heroMedia');
   if (!wrap) return;
-  var main = wrap.querySelectorAll('.hm-main .hm-item');
-  var sub = wrap.querySelectorAll('.hm-sub .hm-item');
-  var cards = wrap.querySelectorAll('.hcard');
-  var video = document.getElementById('hmVideo');
-  var count = cards.length; // cards drive the rotation; photos loop independently on their own (smaller) count
-  if (!count || !main.length || !sub.length) return;
+  var scenes = wrap.querySelectorAll('.hscene');
+  if (!scenes.length) return;
 
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var i = 0, timer = null;
 
-  function countUp(card) {
-    card.querySelectorAll('[data-hero-count]').forEach(function (el) {
+  function countUp(scene) {
+    scene.querySelectorAll('[data-hero-count]').forEach(function (el) {
       var target = parseFloat(el.dataset.heroCount);
       var suf = el.dataset.suffix || '';
       function paint(v) { el.textContent = Math.round(v).toLocaleString('en-US') + suf; }
@@ -5169,7 +5358,7 @@ document.addEventListener('keydown', function(e) {
       var t0 = null;
       function step(ts) {
         if (t0 === null) t0 = ts;
-        var p = Math.min((ts - t0) / 1100, 1);
+        var p = Math.min((ts - t0) / 1400, 1);
         paint(target * (1 - Math.pow(1 - p, 3)));
         if (p < 1) requestAnimationFrame(step);
       }
@@ -5178,60 +5367,76 @@ document.addEventListener('keydown', function(e) {
   }
 
   function show(n) {
-    i = n % count;
-    var mi = i % main.length;
-    var si = i % sub.length;
-    main.forEach(function (el, k) { el.classList.toggle('is-on', k === mi); });
-    sub.forEach(function (el, k) { el.classList.toggle('is-on', k === si); });
-    cards.forEach(function (el, k) { el.classList.toggle('is-on', k === i); });
-    countUp(cards[i]);
-    if (video) { mi === 0 ? video.play().catch(function () {}) : video.pause(); }
+    i = (n + scenes.length) % scenes.length;
+    var scene = scenes[i];
+    scenes.forEach(function (el, k) { el.classList.toggle('is-on', k === i); });
+    countUp(scene);
+    // Once the build-in has run, freeze the pieces in place so future turns
+    // are a clean crossfade instead of a re-stagger.
+    if (!scene.classList.contains('has-played')) {
+      setTimeout(function () { scene.classList.add('has-played'); }, 1400);
+    }
   }
-  function start() { if (!timer && !reduce) timer = setInterval(function () { show(i + 1); }, 3600); }
+
+  // 7s per scene: slow enough to read, and far fewer repaints than before.
+  function start() { if (!timer && !reduce) timer = setInterval(function () { show(i + 1); }, 7000); }
   function stop() { clearInterval(timer); timer = null; }
 
   show(0);
   new IntersectionObserver(function (e) {
-    if (e[0].isIntersecting) {
-      if (video && video.preload !== 'auto') { video.preload = 'auto'; video.load(); video.play().catch(function () {}); }
-      start();
-    } else { stop(); }
+    e[0].isIntersecting ? start() : stop();
   }, { threshold: 0.1 }).observe(wrap);
   document.addEventListener('visibilitychange', function () { document.hidden ? stop() : start(); });
 })();
 
-/* ── Client story video: thumbnails + arrows ───────────────────────────── */
+/* ── Client stories: thumbnails + arrows ───────────────────────────────── */
 (function () {
   var thumbs = document.getElementById('storyThumbs');
   if (!thumbs) return;
   var items = Array.prototype.slice.call(thumbs.querySelectorAll('.sthumb'));
+  var slides = document.querySelectorAll('#storyMedia .smedia');
   var nameEl = document.getElementById('storyName');
   var roleEl = document.getElementById('storyRole');
-  var video = document.getElementById('storyVideo');
   var i = items.findIndex(function (t) { return t.classList.contains('is-active'); });
   if (i < 0) i = 0;
 
   function select(n, userAction) {
     i = (n + items.length) % items.length;
-    items.forEach(function (t, k) { t.classList.toggle('is-active', k === i); });
     var t = items[i];
+    items.forEach(function (el, k) { el.classList.toggle('is-active', k === i); });
+    // The arrows used to change only the name text while the media stayed put,
+    // so they read as broken. Now the photo swaps with the person.
+    var slide = parseInt(t.dataset.slide || i, 10);
+    slides.forEach(function (el, k) { el.classList.toggle('is-on', k === slide); });
     nameEl.textContent = t.dataset.name;
     roleEl.textContent = t.dataset.role;
-    if (userAction) t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
-    if (userAction && video) { try { video.currentTime = 0; video.play(); } catch (e) {} }
+    if (userAction) {
+      t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    }
   }
+
   items.forEach(function (t, n) { t.addEventListener('click', function () { select(n, true); }); });
   document.querySelectorAll('[data-story]').forEach(function (b) {
     b.addEventListener('click', function () { select(i + (b.dataset.story === 'next' ? 1 : -1), true); });
   });
   select(i, false);
+})();
 
-  // only load the video once the section is close to view
-  if (video) {
-    new IntersectionObserver(function (entries, obs) {
-      if (entries[0].isIntersecting) { video.preload = 'auto'; video.load(); video.play().catch(function () {}); obs.disconnect(); }
-    }, { rootMargin: '300px' }).observe(video);
-  }
+/* ── Marquees only animate while they're actually on screen ────────────── */
+(function () {
+  var tracks = document.querySelectorAll('.logo-track, .testi-track');
+  if (!tracks.length || !('IntersectionObserver' in window)) return;
+  tracks.forEach(function (t) { t.style.animationPlayState = 'paused'; });
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      e.target.style.animationPlayState = e.isIntersecting ? 'running' : 'paused';
+    });
+  }, { rootMargin: '120px' });
+  tracks.forEach(function (t) { io.observe(t); });
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) return;
+    tracks.forEach(function (t) { t.style.animationPlayState = 'paused'; });
+  });
 })();
 
 /* ── Back to top ───────────────────────────────────────────────────────── */

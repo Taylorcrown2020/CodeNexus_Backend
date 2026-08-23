@@ -1101,7 +1101,7 @@ nav.mega-open {
       rgba(20, 21, 22, 0.74) 52%,
       rgba(20, 21, 22, 0.93) 78%,
       var(--surface) 100%),
-    url('https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=1920&q=80') center top / cover;
+    url('pexels-danikprihodko-19510861.jpg') center top / cover;
   /* Extra bottom padding gives the fade room to resolve into the footer. */
   padding: 72px 0 120px;
   margin-bottom: 0;
@@ -2958,13 +2958,90 @@ body.modal-open .to-top { display: none !important; }
   .chatbot-messages .message-list li { font-size: 16px; line-height: 1.5; color: #14212b; }
   .chatbot-messages .message-list li::before { top: 0.66em; }
 }
+/* ==========================================================================
+   MOBILE CONTACT FORM
+   Below 900px the modal becomes a bottom sheet: it opens against the thumb
+   instead of floating mid-screen, the fields are 54px tall so they are easy
+   to hit, and every control is 16px because iOS Safari zooms the whole page
+   on focus for anything smaller.
+   ========================================================================== */
+@media (max-width: 899px) {
+  .modal-overlay { align-items: flex-end; padding: 0; }
+
+  .modal-content {
+    max-width: 100%;
+    max-height: 94vh;
+    border-radius: 20px 20px 0 0;
+  }
+  /* Sheet grab handle — signals the panel is its own surface. */
+  .modal-content::before {
+    content: '';
+    position: absolute;
+    top: 10px; left: 50%;
+    width: 42px; height: 4px;
+    margin-left: -21px;
+    border-radius: 999px;
+    background: #dcdad4;
+    z-index: 4;
+  }
+
+  .modal-close {
+    top: 20px; right: 12px;
+    width: 42px; height: 42px;
+    background: var(--paper-2);
+  }
+
+  .modal-panel { padding: 36px 18px calc(28px + env(safe-area-inset-bottom)); }
+
+  .modal-title { font-size: 27px; margin-bottom: 22px; padding-right: 52px; }
+  .modal-title small { display: block; margin-top: 9px; font-size: 16px; }
+
+  .modal-form { gap: 18px; }
+  .form-row { gap: 18px; }
+
+  .form-group label { font-size: 14.5px; font-weight: 600; margin-bottom: 8px; }
+
+  .modal-form input,
+  .modal-form select,
+  .modal-form textarea {
+    font-size: 16px;
+    min-height: 54px;
+    padding: 15px 15px;
+    border-radius: 10px;
+    background-color: #fff;
+    border-color: #d6d4ce;
+  }
+  .modal-form select { background-position: right 16px center; background-size: 17px; }
+
+  .modal-form input:focus,
+  .modal-form select:focus,
+  .modal-form textarea:focus { box-shadow: 0 0 0 3px rgba(244, 200, 126, 0.35); }
+
+  .modal-form button[type="submit"] {
+    width: 100%;
+    min-height: 58px;
+    margin-top: 10px;
+    font-size: 13px;
+    letter-spacing: 1.8px;
+  }
+
+  .form-error { font-size: 13.5px; }
+  .form-status { font-size: 15px; }
+  .modal-form-note { font-size: 12px; line-height: 1.65; }
+}
+
+/* Two selects side by side get cramped on a small tablet — stack the row
+   that holds them a little later than the rest. */
+@media (min-width: 620px) and (max-width: 760px) {
+  .form-row { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 <!-- ═══════════════ ANNOUNCEMENT ═══════════════ -->
 <div class="ann">
     We just launched our Diamondback&reg; CRM
-    <a href="pricing.html#crm-solutions">Learn more</a>
+    <a href="diamondback-crm.html">Learn more</a>
 </div>
 
 <!-- ═══════════════ NAV ═══════════════ -->
@@ -2992,14 +3069,14 @@ body.modal-open .to-top { display: none !important; }
                         <div>
                             <h5>Attract more clients</h5>
                             <a href="website-design-development.html">Website Design &amp; Development<span>Launch a site built to convert</span></a>
-                            <a href="pricing.html#seo">SEO &amp; Digital Marketing<span>Get found on Google and AI search</span></a>
-                            <a href="pricing.html#development">E-Commerce Development<span>Sell online with a store that scales</span></a>
+                            <a href="seo-digital-marketing.html">SEO &amp; Digital Marketing<span>Get found on Google and AI search</span></a>
+                            <a href="ecommerce-development.html">E-Commerce Development<span>Sell online with a store that scales</span></a>
                         </div>
                         <div>
                             <h5>Turn leads into deals</h5>
-                            <a href="pricing.html#crm-solutions">Diamondback CRM<span>Every lead, deal and dollar in one place</span></a>
-                            <a href="pricing.html#crm-solutions">Automated Follow-Up<span>Respond and nurture in minutes</span></a>
-                            <a href="pricing.html#development">Custom Web Applications<span>Internal tools around your workflow</span></a>
+                            <a href="diamondback-crm.html">Diamondback CRM<span>Every lead, deal and dollar in one place</span></a>
+                            <a href="automated-follow-up.html">Automated Follow-Up<span>Respond and nurture in minutes</span></a>
+                            <a href="ecommerce-development.html">Custom Web Applications<span>Internal tools around your workflow</span></a>
                         </div>
                         <div>
                             <h5>Keep clients for life</h5>
@@ -3090,13 +3167,13 @@ body.modal-open .to-top { display: none !important; }
                 <div class="drawer-sub-in">
                     <p class="drawer-group">Attract more clients</p>
                     <a href="website-design-development.html"><strong>Website Design &amp; Development</strong><small>Launch a site built to convert</small></a>
-                    <a href="pricing.html#seo"><strong>SEO &amp; Digital Marketing</strong><small>Get found on Google and AI search</small></a>
-                    <a href="pricing.html#development"><strong>E-Commerce Development</strong><small>Sell online with a store that scales</small></a>
+                    <a href="seo-digital-marketing.html"><strong>SEO &amp; Digital Marketing</strong><small>Get found on Google and AI search</small></a>
+                    <a href="ecommerce-development.html"><strong>E-Commerce Development</strong><small>Sell online with a store that scales</small></a>
 
                     <p class="drawer-group">Turn leads into deals</p>
-                    <a href="pricing.html#crm-solutions"><strong>Diamondback CRM</strong><small>Every lead, deal and dollar in one place</small></a>
-                    <a href="pricing.html#crm-solutions"><strong>Automated Follow-Up</strong><small>Respond and nurture in minutes</small></a>
-                    <a href="pricing.html#development"><strong>Custom Web Applications</strong><small>Internal tools around your workflow</small></a>
+                    <a href="diamondback-crm.html"><strong>Diamondback CRM</strong><small>Every lead, deal and dollar in one place</small></a>
+                    <a href="automated-follow-up.html"><strong>Automated Follow-Up</strong><small>Respond and nurture in minutes</small></a>
+                    <a href="ecommerce-development.html"><strong>Custom Web Applications</strong><small>Internal tools around your workflow</small></a>
 
                     <p class="drawer-group">Keep clients for life</p>
                     <a href="customer_portal.html"><strong>Customer Portal</strong><small>Invoices, agreements and messages</small></a>
@@ -3206,21 +3283,21 @@ body.modal-open .to-top { display: none !important; }
 
         <div class="ptiles">
             <article class="ptile">
-                <img src="Brand2.jpg" alt="" loading="lazy">
+                <img src="ChatGPT Image Aug 23, 2026, 06_15_32 PM.png" alt="" loading="lazy">
                 <div class="ptile-body">
                     <h3>Launch your dream website</h3>
                     <p>We design and build a site that reflects the business you have actually built.</p>
                 </div>
             </article>
             <article class="ptile">
-                <img src="seo.jpg" alt="" loading="lazy">
+                <img src="ChatGPT Image Aug 23, 2026, 05_39_46 PM.png" alt="" loading="lazy">
                 <div class="ptile-body">
                     <h3>Get found on Google and AI search</h3>
                     <p>SEO- and GEO-ready architecture keeps you visible as search keeps changing.</p>
                 </div>
             </article>
             <article class="ptile">
-                <img src="Blog3.jpg" alt="" loading="lazy">
+                <img src="ChatGPT Image Aug 23, 2026, 06_12_23 PM.png" alt="" loading="lazy">
                 <div class="ptile-body">
                     <h3>Capture more qualified leads</h3>
                     <p>Lead capture is built into the browsing, search and content experience.</p>
@@ -3239,7 +3316,7 @@ body.modal-open .to-top { display: none !important; }
                 <h2>Create a first impression as strong as the service you deliver</h2>
                 <p>Every site starts with a one-on-one design strategy call. We build around your brand, your market and the work you want more of &mdash; then hand you a page editor so updates never wait on us.</p>
             </div>
-            <div class="pfeat-media"><img src="Brand2.jpg" alt="Custom website design work" loading="lazy"></div>
+            <div class="pfeat-media"><img src="FirstImpression.png" alt="Custom website design work" loading="lazy"></div>
         </div>
 
         <div class="pfeat pfeat--rev">
@@ -3266,7 +3343,7 @@ body.modal-open .to-top { display: none !important; }
                 <h2>Rank on Google and show up in AI search</h2>
                 <p>Your site ships SEO- and GEO-ready, with the technical foundation Google and AI answer engines look for. We keep updating it as the rules shift, so you keep showing up when buyers go looking.</p>
             </div>
-            <div class="pfeat-media"><img src="seo.jpg" alt="SEO and AI search optimisation" loading="lazy"></div>
+            <div class="pfeat-media"><img src="Paid.jpg" alt="SEO and AI search optimisation" loading="lazy"></div>
         </div>
     </div>
 </section>
@@ -3333,14 +3410,14 @@ body.modal-open .to-top { display: none !important; }
             <article class="pcase">
                 <div class="pcase-media"><img src="Blog1.jpg" alt="" loading="lazy"></div>
                 <div class="pcase-body">
-                    <h3>Rivera Roofing &amp; Diamondback: a full rebuild that turned a dead site into the crew&rsquo;s best salesman</h3>
+                    <h3>The Gated Shifter &amp; Diamondback: a full rebuild that turned a dead site into a leads generating powerhouse</h3>
                     <div class="pcase-stat">
-                        <b>3.1x</b>
+                        <b>6.1x</b>
                         <span>more quote requests in the first six months</span>
                     </div>
                     <div class="pcase-who">
-                        <strong>Marcus Rivera</strong>
-                        <span>Owner, Rivera Roofing Co.</span>
+                        <strong>John Baez</strong>
+                        <span>Owner, The Gated Shifter</span>
                     </div>
                 </div>
             </article>
@@ -3348,14 +3425,14 @@ body.modal-open .to-top { display: none !important; }
             <article class="pcase">
                 <div class="pcase-media"><img src="Blog2.jpg" alt="" loading="lazy"></div>
                 <div class="pcase-body">
-                    <h3>Bluebonnet Dental: a new site and booking flow that filled the schedule without more ad spend</h3>
+                    <h3>JWM Photography: a new site and booking flow that filled the schedule without more ad spend</h3>
                     <div class="pcase-stat">
                         <b>+240%</b>
                         <span>online appointment requests year over year</span>
                     </div>
                     <div class="pcase-who">
-                        <strong>Sarah Kim</strong>
-                        <span>Practice Manager, Bluebonnet Dental</span>
+                        <strong>Jones Miller</strong>
+                        <span>Owner, JWM Photography</span>
                     </div>
                 </div>
             </article>
@@ -3363,14 +3440,14 @@ body.modal-open .to-top { display: none !important; }
             <article class="pcase">
                 <div class="pcase-media"><img src="Blog3.jpg" alt="" loading="lazy"></div>
                 <div class="pcase-body">
-                    <h3>Whitfield Interiors: a storefront rebuild that made the catalogue worth browsing</h3>
+                    <h3>Constance Photography: a service store rebuild that made the catalogue worth browsing</h3>
                     <div class="pcase-stat">
                         <b>2.6x</b>
                         <span>revenue per visitor after the store rebuild</span>
                     </div>
                     <div class="pcase-who">
-                        <strong>Dana Whitfield</strong>
-                        <span>Founder, Whitfield Interiors</span>
+                        <strong>Constance Puyear</strong>
+                        <span>Founder, Constance Photography</span>
                     </div>
                 </div>
             </article>
@@ -3416,21 +3493,21 @@ body.modal-open .to-top { display: none !important; }
                 <p>Diamondback rebuilt our site from scratch and it finally looks like the work we actually do. We get calls every week from people who found us on Google instead of a referral.</p>
                 <figcaption>
                     <img src="https://i.pravatar.cc/160?img=32" alt="" loading="lazy">
-                    <span><strong>Marcus Rivera</strong><em>Rivera Roofing Co. &mdash; Forney, TX</em></span>
+                    <span><strong>John Baez</strong><em>The Gated Shifter &mdash; Austin, TX</em></span>
                 </figcaption>
             </figure>
             <figure class="pquote">
                 <p>Everyone we worked with bent over backwards to get this right. The booking flow alone paid for the build inside a quarter, and support has never once left us waiting.</p>
                 <figcaption>
                     <img src="https://i.pravatar.cc/160?img=47" alt="" loading="lazy">
-                    <span><strong>Sarah Kim</strong><em>Bluebonnet Dental &mdash; Rockwall, TX</em></span>
+                    <span><strong>Jones Miller</strong><em>JWM Photography &mdash; Austin, TX</em></span>
                 </figcaption>
             </figure>
             <figure class="pquote">
                 <p>I really feel there is no way you can lose when you hand this over and let them run with it. They know what converts, and they were honest with us when an idea of ours would not.</p>
                 <figcaption>
                     <img src="https://i.pravatar.cc/160?img=58" alt="" loading="lazy">
-                    <span><strong>Dana Whitfield</strong><em>Whitfield Interiors &mdash; Rockwall, TX</em></span>
+                    <span><strong>Constance Puyear</strong><em>Constance Photography &mdash; Rockwall, TX</em></span>
                 </figcaption>
             </figure>
             <figure class="pquote">
@@ -3524,11 +3601,11 @@ body.modal-open .to-top { display: none !important; }
         <div class="foot-col-links"><div class="foot-col-links-in">
             <a href="website-design-development.html">Business Websites</a>
             <a href="pricing.html#development">Landing Pages</a>
-            <a href="pricing.html#crm-solutions">Diamondback CRM</a>
-            <a href="pricing.html#seo">SEO &amp; GEO</a>
+            <a href="diamondback-crm.html">Diamondback CRM</a>
+            <a href="seo-digital-marketing.html">SEO &amp; GEO</a>
             <a href="pricing.html#marketing">Paid Ads Management</a>
-            <a href="pricing.html#development">E-Commerce Stores</a>
-            <a href="pricing.html#development">Custom Web Apps</a>
+            <a href="ecommerce-development.html">E-Commerce Stores</a>
+            <a href="ecommerce-development.html">Custom Web Apps</a>
             <a href="pricing.html">Maintenance &amp; Support</a>
         </div></div>
     </div>
@@ -3626,29 +3703,28 @@ body.modal-open .to-top { display: none !important; }
         </div>
 
         <div class="modal-panel">
-            <h2 class="modal-title">Start a project <small>or call us <a href="tel:+15129800393">(512) 980-0393</a></small></h2>
-            <p class="modal-sub">Tell us what you need and we will come back to you the same business day. No obligation, no sales sequence.</p>
+            <h2 class="modal-title">Book a Demo <small>or call us <a href="tel:+15129800393">(512) 980-0393</a></small></h2>
 
             <form class="modal-form" id="contactForm" novalidate onsubmit="handleSubmit(event)">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="firstName">First name*</label>
-                        <input type="text" id="firstName" name="firstName" autocomplete="given-name" required>
+                        <input type="text" id="firstName" name="firstName" autocomplete="given-name" autocapitalize="words" enterkeyhint="next" required>
                     </div>
                     <div class="form-group">
                         <label for="lastName">Last name*</label>
-                        <input type="text" id="lastName" name="lastName" autocomplete="family-name" required>
+                        <input type="text" id="lastName" name="lastName" autocomplete="family-name" autocapitalize="words" enterkeyhint="next" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="email">Email*</label>
-                        <input type="email" id="email" name="email" autocomplete="email" required>
+                        <input type="email" id="email" name="email" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" enterkeyhint="next" required>
                     </div>
                     <div class="form-group">
                         <label for="phone">Phone number*</label>
-                        <input type="tel" id="phone" name="phone" autocomplete="tel" required>
+                        <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel" enterkeyhint="next" placeholder="(555) 123-4567" required>
                     </div>
                 </div>
 
@@ -3659,23 +3735,27 @@ body.modal-open .to-top { display: none !important; }
                             <option value="">Please select</option>
                             <option>Website Design</option>
                             <option>Web Development</option>
+                            <option>SEO &amp; AI Search</option>
+                            <option>Digital Marketing</option>
                             <option>E-commerce Development</option>
                             <option>CRM Solutions</option>
-                            <option>SEO Services</option>
-                            <option>Digital Marketing</option>
                             <option>Custom Web Applications</option>
-                            <option>Other</option>
+                            <option>Something else</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="currentSite">Your current website (optional)</label>
-                        <input type="text" id="currentSite" name="currentSite" placeholder="yourbusiness.com">
+                        <label for="clientStatus">Are you currently a Diamondback client?</label>
+                        <select id="clientStatus" name="clientStatus">
+                            <option value="">Please select</option>
+                            <option>No &mdash; new here</option>
+                            <option>Yes &mdash; current client</option>
+                        </select>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="details">Tell us about your project*</label>
-                    <textarea id="details" name="details" required></textarea>
+                    <label for="currentSite">Your current website (optional)</label>
+                    <input type="text" id="currentSite" name="currentSite" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="url" enterkeyhint="done" placeholder="yourbusiness.com">
                 </div>
 
                 <p class="form-status" id="formStatus" role="status" aria-live="polite" hidden></p>
@@ -4159,8 +4239,7 @@ var FORM_FIELDS = [
     { id: 'lastName',    required: 'Please enter your last name.' },
     { id: 'email',       required: 'Please enter your email address.', type: 'email' },
     { id: 'phone',       required: 'Please enter your phone number.', type: 'phone' },
-    { id: 'service',     required: 'Please choose what you need.' },
-    { id: 'details',     required: 'Please tell us a little about the project.' }
+    { id: 'service',     required: 'Please choose what you need.' }
 ];
 
 function fieldError(el, message) {
@@ -4253,14 +4332,25 @@ async function handleSubmit(event) {
         var el = document.getElementById(id);
         return el ? el.value.trim() : '';
     };
+    /* The form no longer has a free-text box, so `details` is composed here
+       rather than posted empty — the CRM still gets a readable line. */
+    var status = val('clientStatus');
+    var site   = val('currentSite');
+    var details = 'Website demo request.';
+    if (val('service')) details += ' Needs: ' + val('service') + '.';
+    if (status)         details += ' Current client: ' + status + '.';
+    if (site)           details += ' Current site: ' + site + '.';
+    details += ' Submitted from ' + (location.pathname.split('/').pop() || 'index.html') + '.';
+
     var formData = {
-        firstName:   val('firstName'),
-        lastName:    val('lastName'),
-        email:       val('email'),
-        phone:       val('phone'),
-        service:     val('service'),
-        currentSite: val('currentSite'),
-        details:     val('details')
+        firstName:    val('firstName'),
+        lastName:     val('lastName'),
+        email:        val('email'),
+        phone:        val('phone'),
+        service:      val('service'),
+        clientStatus: status,
+        currentSite:  site,
+        details:      details
     };
 
     submitBtn.disabled = true;
@@ -5186,7 +5276,7 @@ const featurePopupData = {
             'Fast load times & secure hosting',
             'Custom branding & premium UI/UX'
         ],
-        link: 'pricing.html#development'
+        link: 'ecommerce-development.html'
     },
     'crm': {
         tag: 'CRM Solution',
@@ -5198,7 +5288,7 @@ const featurePopupData = {
             'Revenue dashboards & reporting',
             'Seamlessly integrates with your website'
         ],
-        link: 'pricing.html#crm-solutions'
+        link: 'diamondback-crm.html'
     },
     'seo': {
         tag: 'SEO & Marketing',
@@ -5210,7 +5300,7 @@ const featurePopupData = {
             'Content strategy & blog management',
             'Monthly performance reporting'
         ],
-        link: 'pricing.html#seo'
+        link: 'seo-digital-marketing.html'
     },
     'mobile': {
         tag: 'Mobile Experience',
@@ -5222,7 +5312,7 @@ const featurePopupData = {
             'Seamless booking & e-commerce',
             'Works on iOS & Android'
         ],
-        link: 'pricing.html#development'
+        link: 'ecommerce-development.html'
     },
     'ads': {
         tag: 'Paid Advertising',

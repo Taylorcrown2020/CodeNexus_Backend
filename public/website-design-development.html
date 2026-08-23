@@ -11,7 +11,7 @@
     <meta name="google-site-verification" content="zanVD9vMpB-Xu_0jS-eLsrE-J2F44grCN75jGW2hq40" />
     
     <!-- Primary Meta Tags -->
-<title>Professional Website Design & Development Services | Custom Web Solutions Nationwide | Diamondback Coding</title>
+<title>Website Design &amp; Development | Diamondback Coding</title>
 <meta name="title" content="Professional Web Development | Custom Websites & Digital Solutions Across the United States">
 <meta name="description" content="Professional website design and development services for businesses across the United States. Custom web solutions, CRM systems, SEO optimization, and digital marketing. Expert developers delivering responsive, secure, and scalable websites nationwide.">
     <meta name="keywords" content="website design, web development, custom website design, professional web development, responsive web design, ecommerce website development, wordpress development, react development, full stack development, web design agency, web development company, crm development, custom crm solutions, digital marketing services, seo optimization, website design services usa, professional web developers, custom web applications, business website design, small business web design, enterprise web development, mobile responsive design, secure web development, scalable web solutions, american web development company, nationwide web services, us web developers">
@@ -2581,6 +2581,258 @@ body.modal-open { overflow: hidden; }
 .sr { opacity: 1 !important; transform: none !important; transition: none !important; }
 }
 </style>
+<style id="db-product-page">
+/* ==========================================================================
+   PRODUCT PAGE — Website Design & Development
+   ========================================================================== */
+
+/* ==========================================================================
+   LIGHT NAV — this page only.
+   At rest the bar is the same cream as the hero so the two read as one
+   surface; opening a dropdown lifts it to the shared gray (--surface).
+   ========================================================================== */
+nav.nav--light {
+  background: var(--paper-2);
+  border-bottom-color: transparent;
+}
+nav.nav--light .nav-logo,
+nav.nav--light .nav-links > li > a,
+nav.nav--light .nav-links > li > button,
+nav.nav--light .nav-phone,
+nav.nav--light .nav-login { color: var(--ink); }
+nav.nav--light .mobile-menu-btn span { background: var(--ink); }
+
+/* Hovering a dropdown link, a dropdown open, or the page scrolled: the bar
+   matches the announcement bar (--ink) so the two read as one surface.
+   Links without a dropdown (Home, Work) never trigger this. */
+nav.nav--light:has(.nav-links > li.has-mega:hover),
+nav.nav--light:has(.nav-links > li.has-mega:focus-within),
+nav.nav--light.mega-open,
+nav.nav--light.nav--scrolled { background: var(--ink); }
+
+nav.nav--light:has(.nav-links > li.has-mega:hover) .nav-logo,
+nav.nav--light:has(.nav-links > li.has-mega:hover) .nav-links > li > a,
+nav.nav--light:has(.nav-links > li.has-mega:hover) .nav-phone,
+nav.nav--light:has(.nav-links > li.has-mega:hover) .nav-login,
+nav.nav--light:has(.nav-links > li.has-mega:focus-within) .nav-logo,
+nav.nav--light:has(.nav-links > li.has-mega:focus-within) .nav-links > li > a,
+nav.nav--light:has(.nav-links > li.has-mega:focus-within) .nav-phone,
+nav.nav--light:has(.nav-links > li.has-mega:focus-within) .nav-login,
+nav.nav--light.mega-open .nav-logo,
+nav.nav--light.mega-open .nav-links > li > a,
+nav.nav--light.mega-open .nav-phone,
+nav.nav--light.mega-open .nav-login,
+nav.nav--light.nav--scrolled .nav-logo,
+nav.nav--light.nav--scrolled .nav-links > li > a,
+nav.nav--light.nav--scrolled .nav-phone,
+nav.nav--light.nav--scrolled .nav-login { color: #fff; }
+
+nav.nav--light .mega { background: var(--ink); }
+
+/* The login dropdown hangs off the light bar, so give it the same color. */
+nav.nav--light .login-menu { background: var(--ink); }
+
+/* ---- Hero --------------------------------------------------------------- */
+.phero {
+  background: var(--paper-2);
+  color: var(--ink);
+  margin-top: calc(var(--ann-h) + var(--nav-h));
+  padding: 54px 0 66px;
+}
+.phero-inner { display: grid; gap: 34px; align-items: center; }
+@media (min-width: 1000px) {
+  /* The hero sits in a narrower container than the rest of the page —
+     the reference insets it well inside the full grid. */
+  .phero { padding: 64px 0 88px; }
+  .phero-inner { max-width: 1270px; grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr); gap: 96px; }
+}
+.pchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 16px 9px 12px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 22px;
+}
+.pchip svg { width: 18px; height: 18px; flex-shrink: 0; }
+.phero h1 {
+  font-size: clamp(36px, 8.2vw, 58px);
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  /* Breaks are set with <br> in the markup, not by measure — a ch/em
+     max-width shifts with whatever font actually loads. */
+}
+.phero h1 br { display: none; }
+@media (min-width: 1000px) { .phero h1 br { display: inline; } }
+.phero .lede { margin-top: 20px; max-width: 46ch; }
+.phero .btn { margin-top: 30px; }
+.phero-media { border-radius: 0; overflow: visible; }
+/* Transparent PNG render — no card, no crop, sits straight on the background. */
+.phero-media img { width: 100%; height: auto; object-fit: contain; aspect-ratio: 1100 / 984; }
+
+/* The logo rail shares the hero's cream so the top of the page reads as one
+   continuous surface, as in the reference. */
+.phero-rail { background: var(--paper-2); }
+
+/* ---- Centred section head ----------------------------------------------- */
+.pmid { text-align: center; max-width: 900px; margin: 0 auto 40px; }
+.pmid h2 { font-size: clamp(30px, 6.4vw, 54px); font-weight: 500; line-height: 1.06; letter-spacing: -0.035em; }
+.pmid p { margin: 20px auto 0; font-size: clamp(16px, 2.2vw, 19px); color: var(--muted-l); max-width: 60ch; }
+@media (min-width: 1000px) { .pmid { margin-bottom: 58px; } }
+
+/* ---- Three overlay cards ------------------------------------------------- */
+.ptiles { display: grid; gap: 16px; }
+@media (min-width: 800px) { .ptiles { grid-template-columns: repeat(3, 1fr); gap: 20px; } }
+.ptile {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  min-height: 420px;
+  background: var(--ink-2);
+  display: flex;
+  align-items: flex-end;
+}
+.ptile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ptile::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, transparent 42%, rgba(0,0,0,0.82) 100%);
+}
+.ptile-body { position: relative; z-index: 2; padding: 26px 24px 28px; color: #fff; }
+.ptile-body h3 { font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
+.ptile-body p { margin-top: 9px; font-size: 15.5px; line-height: 1.5; color: rgba(255,255,255,0.76); }
+
+/* ---- Alternating feature rows -------------------------------------------- */
+.pfeat { display: grid; gap: 28px; align-items: center; }
+.pfeat + .pfeat { margin-top: 64px; }
+@media (min-width: 1000px) {
+  .pfeat { grid-template-columns: minmax(0, 1fr) minmax(0, 1.06fr); gap: 80px; }
+  .pfeat + .pfeat { margin-top: 128px; }
+  .pfeat--rev .pfeat-text { order: 2; }
+  .pfeat--rev .pfeat-media { order: 1; }
+}
+.pfeat-eyebrow {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: var(--muted-l);
+  margin-bottom: 16px;
+}
+.pfeat-text h2 { font-size: clamp(28px, 5.6vw, 44px); font-weight: 500; line-height: 1.08; letter-spacing: -0.033em; }
+.pfeat-text p { margin-top: 18px; font-size: clamp(16px, 2.1vw, 18px); line-height: 1.6; color: var(--muted-l); max-width: 52ch; }
+.pfeat-media { border-radius: 12px; overflow: hidden; background: var(--ink-2); }
+.pfeat-media img { width: 100%; aspect-ratio: 16 / 11; object-fit: cover; }
+
+/* ---- Case study card ----------------------------------------------------- */
+.pcase-rail { display: flex; gap: 18px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; }
+.pcase-rail::-webkit-scrollbar { display: none; }
+.pcase {
+  flex: 0 0 88%;
+  scroll-snap-align: start;
+  display: grid;
+  background: var(--paper-3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+@media (min-width: 1000px) { .pcase { flex-basis: 76%; grid-template-columns: 40% 1fr; min-height: 560px; } }
+.pcase-media img { width: 100%; height: 100%; object-fit: cover; aspect-ratio: 4 / 5; }
+@media (min-width: 1000px) { .pcase-media img { aspect-ratio: auto; } }
+.pcase-body { padding: 30px 28px 34px; display: flex; flex-direction: column; }
+@media (min-width: 1000px) { .pcase-body { padding: 46px 46px 44px; } }
+.pcase-body h3 { font-size: clamp(21px, 3vw, 28px); font-weight: 600; line-height: 1.22; letter-spacing: -0.025em; }
+.pcase-stat { margin-top: 24px; }
+.pcase-stat b { display: block; font-size: clamp(30px, 4.4vw, 40px); font-weight: 500; letter-spacing: -0.04em; }
+.pcase-stat span { display: block; margin-top: 4px; font-size: 15px; color: var(--muted-l); }
+.pcase-who { margin-top: auto; padding-top: 34px; }
+.pcase-who strong { display: block; font-size: 17px; font-weight: 600; }
+.pcase-who span { display: block; margin-top: 2px; font-size: 15px; color: var(--muted-l); }
+
+.prail-foot { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 34px; flex-wrap: wrap; }
+.prail-arrows { display: flex; gap: 26px; }
+.prail-arrows button { color: inherit; display: grid; place-items: center; }
+.prail-arrows button[disabled] { opacity: 0.35; }
+.prail-arrows svg { width: 30px; height: 22px; stroke: currentColor; stroke-width: 1.4; }
+
+/* ---- Review wall ---------------------------------------------------------- */
+.pjoin { display: grid; gap: 24px; align-items: center; }
+@media (min-width: 1000px) { .pjoin { grid-template-columns: minmax(0, 1fr) auto; gap: 50px; } }
+.pjoin h2 { font-size: clamp(30px, 6vw, 52px); font-weight: 500; line-height: 1.06; letter-spacing: -0.035em; max-width: 14ch; }
+.pjoin p { margin-top: 18px; font-size: 17px; color: var(--muted-d); }
+.pjoin-proof { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.pjoin-proof .proof-stars svg { width: 19px; height: 19px; }
+.pjoin-proof span { font-size: 15px; color: rgba(255,255,255,0.72); }
+
+.pquotes { display: flex; gap: 18px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; margin-top: 44px; padding-bottom: 4px; }
+.pquotes::-webkit-scrollbar { display: none; }
+.pquote {
+  flex: 0 0 84%;
+  scroll-snap-align: start;
+  background: #fff;
+  color: var(--ink);
+  border-radius: 14px;
+  padding: 30px 28px;
+  display: flex;
+  flex-direction: column;
+  min-height: 380px;
+}
+@media (min-width: 800px) { .pquote { flex-basis: 42%; } }
+@media (min-width: 1200px) { .pquote { flex-basis: 29%; } }
+.pquote p { font-size: 18px; line-height: 1.5; letter-spacing: -0.015em; }
+.pquote figcaption { margin-top: auto; padding-top: 30px; display: flex; align-items: center; gap: 14px; }
+.pquote img { width: 56px; height: 56px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+.pquote strong { display: block; font-size: 15.5px; font-weight: 500; }
+.pquote em { display: block; margin-top: 2px; font-style: normal; font-size: 14.5px; color: var(--muted-l); }
+
+/* ---- FAQ ------------------------------------------------------------------ */
+.pfaq { display: grid; gap: 26px; }
+@media (min-width: 1000px) { .pfaq { grid-template-columns: minmax(0, 0.44fr) minmax(0, 1fr); gap: 40px; } }
+.pfaq h2 { font-size: clamp(28px, 5.4vw, 42px); font-weight: 500; line-height: 1.08; letter-spacing: -0.033em; }
+.faq-item { border-top: 1px solid var(--line-l); }
+.faq-item:last-child { border-bottom: 1px solid var(--line-l); }
+.faq-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 22px 0;
+  text-align: left;
+  font-size: clamp(16.5px, 2.1vw, 19px);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  line-height: 1.35;
+}
+.faq-ico {
+  position: relative;
+  width: 40px; height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line-l);
+}
+.faq-ico::before, .faq-ico::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 15px; height: 1.6px;
+  background: var(--ink);
+  transform: translate(-50%, -50%);
+  transition: transform 0.28s var(--ease), opacity 0.28s var(--ease);
+}
+.faq-ico::after { transform: translate(-50%, -50%) rotate(90deg); }
+.faq-item.open .faq-ico::after { transform: translate(-50%, -50%) rotate(0deg); opacity: 0; }
+.faq-panel { max-height: 0; overflow: hidden; transition: max-height 0.34s var(--ease); }
+.faq-item.open .faq-panel { max-height: 460px; }
+.faq-panel-in { padding: 0 0 24px 60px; font-size: 16px; line-height: 1.62; color: var(--muted-l); max-width: 74ch; }
+@media (max-width: 999px) { .faq-panel-in { padding-left: 0; } }
+</style>
+
 <style id="db-forms">
 /* ==========================================================================
    Contact form + chat widget refinements
@@ -2709,7 +2961,6 @@ body.modal-open .to-top { display: none !important; }
 </style>
 </head>
 <body>
-
 <!-- ═══════════════ ANNOUNCEMENT ═══════════════ -->
 <div class="ann">
     We just launched our Diamondback&reg; CRM
@@ -2717,7 +2968,7 @@ body.modal-open .to-top { display: none !important; }
 </div>
 
 <!-- ═══════════════ NAV ═══════════════ -->
-<nav id="siteNav">
+<nav id="siteNav" class="nav--light">
     <div class="nav-container">
         <a href="index.html" class="nav-logo">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -2886,426 +3137,141 @@ body.modal-open .to-top { display: none !important; }
 </div>
 
 <!-- ═══════════════ HERO ═══════════════ -->
-<header class="hero">
-    <div class="hero-bg">
-        <video id="heroVideo" autoplay muted loop playsinline preload="auto" webkit-playsinline>
-            <source src="12817768_3840_2160_30fps.mp4" type="video/mp4">
-        </video>
-        <img src="pexels-cottonbro-5082237 (1).jpg" alt="" loading="eager">
-    </div>
-
-    <div class="hero-prism" aria-hidden="true"></div>
-
-    <div class="hero-inner">
-        <div class="hero-text">
-            <span class="eyebrow hero-in" style="--d:.05s">Web design &middot; CRM &middot; SEO</span>
-            <h1 class="h-xl hero-h1"><span class="w"><i style="--d:0.000s">Professional</i></span> <span class="w"><i style="--d:0.055s">web</i></span> <span class="w"><i style="--d:0.110s">development</i></span> <span class="w"><i style="--d:0.165s">&amp;</i></span> <span class="w"><i style="--d:0.220s">CRM</i></span> <span class="w"><i style="--d:0.275s">solutions</i></span> <span class="w"><i style="--d:0.330s">nationwide</i></span></h1>
-            <p class="hero-accent hero-in" style="--d:.5s">Custom-built. Texas-based. Nationwide.</p>
-            <p class="lede hero-in" style="--d:.58s">Expert web development delivering custom websites, CRM solutions and digital marketing to businesses across the United States.</p>
-
-            <div class="hero-cta hero-in" style="--d:.66s">
-                <button class="btn btn--gold" onclick="openModal()">
-                    Get started
-                    <span class="btn__arrow"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"><path d="M5 12h13M13 6l6 6-6 6"/></svg></span>
-                </button>
-                <a class="btn btn--ghost" href="portfolio.html">View our work</a>
-            </div>
-
-            <div class="proof hero-in" style="--d:.76s">
-                <div class="proof-stars">
-                    <svg viewBox="0 0 24 24" fill="#f4c87e"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    <svg viewBox="0 0 24 24" fill="#f4c87e"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    <svg viewBox="0 0 24 24" fill="#f4c87e"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    <svg viewBox="0 0 24 24" fill="#f4c87e"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    <svg viewBox="0 0 24 24" fill="#f4c87e"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    <p><strong>5.0/5</strong> based on client reviews</p>
-                </div>
-                <div class="avatars">
-                    <img src="https://i.pravatar.cc/80?img=32" alt="" loading="lazy">
-                    <img src="https://i.pravatar.cc/80?img=47" alt="" loading="lazy">
-                    <img src="https://i.pravatar.cc/80?img=12" alt="" loading="lazy">
-                    <img src="https://i.pravatar.cc/80?img=58" alt="" loading="lazy">
-                </div>
-            </div>
+<header class="phero">
+    <div class="wrap phero-inner">
+        <div>
+            <span class="pchip">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M12 12L3 7.5" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M12 12V21" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M12 12L21 7.5" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                Website Design &amp; Development
+            </span>
+            <h1>A website as <br>strong as the <br>business you&rsquo;ve <br>built</h1>
+            <p class="lede">We design premium websites that attract better clients, win the job before you shake a hand, and make you stand out in your market.</p>
+            <button class="btn btn--gold" onclick="openModal()">See it in action</button>
         </div>
 
-        <div class="hero-media" id="heroMedia" aria-hidden="true">
-
-            <!-- 1 · live client site, domain pill, brand kit -->
-            <div class="hscene hs-site is-on">
-                <div class="htab hp" style="--hd:.05s">
-                    <div class="htab-screen">
-                        <img src="Brand2.jpg" alt="" decoding="async">
-                        <span class="site-title">Rivera Roofing</span>
-                        <span class="site-meta">Forney, TX &nbsp;&middot;&nbsp; Full site + CRM &nbsp;&middot;&nbsp; Live in 4 weeks</span>
-                    </div>
-                </div>
-                <div class="domain-pill hp" style="--hd:.30s">
-                    <span>riveraroofing.com</span>
-                    <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M9 15 15 9M10 6l1-1a4 4 0 0 1 5.7 5.7l-1 1M14 18l-1 1A4 4 0 1 1 7.3 13.3l1-1"/></svg>
-                </div>
-                <div class="kit-card hp" style="--hd:.44s">
-                    <span class="kit-aa">Aa</span>
-                    <div class="kit-swatches"><i></i><i></i><i></i></div>
-                </div>
-            </div>
-
-            <!-- 2 · quote selection panel -->
-            <div class="hscene hs-select">
-                <div class="hshell hp" style="--hd:.05s">
-                    <div class="sel-panel">
-                        <div class="sel-head"><strong>Selection</strong><i></i></div>
-
-                        <div class="sel-row hp" style="--hd:.24s">
-                            <img src="Blog1.jpg" alt="" loading="lazy" decoding="async">
-                            <div class="sel-info">
-                                <div class="sel-price"><b>$8,400</b><em>Active</em></div>
-                                <div class="sel-spec">14 pages &middot; CRM &middot; SEO setup</div>
-                                <div class="sel-addr">Rivera Roofing Co., Forney, TX</div>
-                            </div>
-                            <span class="sel-grip"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                        </div>
-
-                        <div class="sel-row hp" style="--hd:.34s">
-                            <img src="Paid.jpg" alt="" loading="lazy" decoding="async">
-                            <div class="sel-info">
-                                <div class="sel-price"><b>$12,250</b><em>Active</em></div>
-                                <div class="sel-spec">Store build &middot; 240 products &middot; Stripe</div>
-                                <div class="sel-addr">Whitfield Interiors, Rockwall, TX</div>
-                            </div>
-                            <span class="sel-grip"><i></i><i></i><i></i><i></i><i></i><i></i></span>
-                        </div>
-                    </div>
-
-                    <div class="sel-bar hp" style="--hd:.46s">
-                        <span class="sel-count">
-                            <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                            2 selected
-                        </span>
-                        <span class="sel-save">
-                            <svg viewBox="0 0 24 24" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                            Save
-                        </span>
-                        <span class="sel-share">
-                            <svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg>
-                            Share
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3 · push notification -->
-            <div class="hscene hs-note">
-                <div class="hshell hp" style="--hd:.05s">
-                    <div class="note-card">
-                        <div class="note-top hp" style="--hd:.24s">
-                            <span class="note-ico"><svg viewBox="0 0 24 24"><path d="M12 3 3 7.5v9L12 21l9-4.5v-9L12 3Z"/></svg></span>
-                            <span class="note-app">Diamondback CRM</span>
-                            <span class="note-time">1m ago</span>
-                        </div>
-                        <strong class="hp" style="--hd:.34s">Your lead is ready to <em>schedule a call</em></strong>
-                        <p class="hp" style="--hd:.42s">Hey Taylor, your daily lead summary is ready. Three prospects replied overnight and two asked for pricing.</p>
-                        <span class="note-more hp" style="--hd:.52s">3 more notifications</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 4 · client story video + collage -->
-            <div class="hscene hs-collage">
-                <div class="col-main hp" style="--hd:.05s"><img src="Blog3.jpg" alt="" loading="lazy" decoding="async"></div>
-                <div class="col-s col-a hp" style="--hd:.30s"><img src="Blog2.jpg" alt="" loading="lazy" decoding="async"></div>
-                <div class="col-s col-b hp" style="--hd:.40s"><img src="sara-kurfess-6lcT2kRPvnI-unsplash.jpg" alt="" loading="lazy" decoding="async"></div>
-                <div class="col-s col-c hp" style="--hd:.50s"><img src="seo.jpg" alt="" loading="lazy" decoding="async"></div>
-            </div>
-
-            <!-- 5 · sponsored reel + views stat -->
-            <div class="hscene hs-reel">
-                <div class="htab hp" style="--hd:.05s">
-                    <div class="htab-screen">
-                        <img src="Paid.jpg" alt="" loading="lazy" decoding="async">
-                        <span class="reel-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
-                        <div class="reel-cap">
-                            <div class="reel-cap-top"><strong>Rivera Roofing</strong><em>Sponsored</em></div>
-                            <span class="reel-skel reel-skel--b"></span>
-                            <span class="reel-skel reel-skel--c"></span>
-                        </div>
-                    </div>
-                </div>
-                <div class="stat-card hp" style="--hd:.34s">
-                    <div class="stat-head">
-                        <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                        <span class="stat-since">Last 30 days</span>
-                    </div>
-                    <div class="stat-row">
-                        <b data-hero-count="60" data-suffix="K">0</b>
-                        <svg class="stat-up" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg>
-                    </div>
-                    <span class="stat-label">Views on this campaign</span>
-                    <div class="stat-list">
-                        <div class="stat-line"><span>Clicks to site</span><b data-hero-count="2140">0</b></div>
-                        <div class="stat-line"><span>New leads</span><b data-hero-count="128">0</b></div>
-                        <div class="stat-line stat-line--sum"><span>Cost per lead</span><strong>$9.40</strong></div>
-                    </div>
-                </div>
-            </div>
-
+        <div class="phero-media">
+            <img src="hero-mockup.png" alt="A Diamondback Coding website shown on desktop and mobile" loading="eager" fetchpriority="high">
         </div>
     </div>
 </header>
 
-<!-- ═══════════════ LOGO BAND ═══════════════ -->
-<div class="logos logos--dark">
-        <div class="logos-mask">
-            <div class="logo-track">
-                <div class="logo-set">
-                    <span class="logo-slot"><img class="logo-img" src="assets/google.svg" alt="Google logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/microsoft.svg" alt="Microsoft logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/amazon.svg" alt="Amazon logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/react.svg" alt="React logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/vue.svg" alt="Vue logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/nodejs.svg" alt="Node.js logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/shopify.svg" alt="Shopify logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/stripe.svg" alt="Stripe logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/twilio.svg" alt="Twilio logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/mongodb.svg" alt="MongoDB logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/postgresql.svg" alt="PostgreSQL logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/sass.svg" alt="Sass logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
-                <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
-                <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
-                <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
-                <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
-                <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
+<!-- ═══════════════ CLIENT LOGO RAIL ═══════════════ -->
+<div class="logos logos--light phero-rail" style="margin-top:0">
+    <div class="logos-mask">
+        <div class="logo-track">
+            <div class="logo-set">
+                <span class="logo-slot"><span class="logo-word">Google</span></span>
+                <span class="logo-slot"><span class="logo-word">Microsoft</span></span>
+                <span class="logo-slot"><span class="logo-word">Amazon</span></span>
+                <span class="logo-slot"><span class="logo-word">React</span></span>
+                <span class="logo-slot"><span class="logo-word">Vue</span></span>
+                <span class="logo-slot"><span class="logo-word">Node.js</span></span>
+                <span class="logo-slot"><span class="logo-word">Shopify</span></span>
+                <span class="logo-slot"><span class="logo-word">Stripe</span></span>
+                <span class="logo-slot"><span class="logo-word">Twilio</span></span>
+                <span class="logo-slot"><span class="logo-word">MongoDB</span></span>
+                <span class="logo-slot"><span class="logo-word">PostgreSQL</span></span>
+                <span class="logo-slot"><span class="logo-word">Sass</span></span>
+            </div>
+            <div class="logo-set" aria-hidden="true">
+                <span class="logo-slot"><span class="logo-word">Google</span></span>
+                <span class="logo-slot"><span class="logo-word">Microsoft</span></span>
+                <span class="logo-slot"><span class="logo-word">Amazon</span></span>
+                <span class="logo-slot"><span class="logo-word">React</span></span>
+                <span class="logo-slot"><span class="logo-word">Vue</span></span>
+                <span class="logo-slot"><span class="logo-word">Node.js</span></span>
+                <span class="logo-slot"><span class="logo-word">Shopify</span></span>
+                <span class="logo-slot"><span class="logo-word">Stripe</span></span>
+                <span class="logo-slot"><span class="logo-word">Twilio</span></span>
+                <span class="logo-slot"><span class="logo-word">MongoDB</span></span>
+                <span class="logo-slot"><span class="logo-word">PostgreSQL</span></span>
+                <span class="logo-slot"><span class="logo-word">Sass</span></span>
             </div>
         </div>
     </div>
+</div>
 
-<!-- ═══════════════ SHOWCASE 1 — WEBSITES ═══════════════ -->
-<section class="band band--paper" id="websites">
+<!-- ═══════════════ ELEVATE + THREE TILES ═══════════════ -->
+<section class="band band--paper2">
     <div class="wrap">
-        <div class="show-head">
-            <span class="eyebrow">Attract more clients</span>
-            <h2 class="h-lg"><span class="h-dim">The websites for</span> all your needs.</h2>
-            <p class="lede">Powerful, flexible and performance-driven &mdash; we build the exact website your business needs, then keep it fast.</p>
+        <div class="pmid">
+            <h2>Elevate your digital presence with a high-end website</h2>
+            <p>Get a custom-built website wired into a platform that captures leads and keeps improving after launch.</p>
         </div>
 
-        <div class="show-body">
-            <div class="show-visual">
-                <img src="Brand2.jpg" alt="Custom website built by Diamondback Coding" loading="lazy">
-            </div>
-
-            <div class="show-acc" data-accordion>
-                <div class="acc-item open">
-                    <button type="button" class="acc-btn">Custom web development.
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="acc-panel"><div class="acc-panel-in">
-                        Build something truly yours &mdash; 100% custom-coded from the ground up. Full control over every pixel and feature, with unlimited scalability and seamless integration with your existing tools.
-                        <a class="link-explore" href="pricing.html#development">Explore <i><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></i></a>
-                    </div></div>
+        <div class="ptiles">
+            <article class="ptile">
+                <img src="Brand2.jpg" alt="" loading="lazy">
+                <div class="ptile-body">
+                    <h3>Launch your dream website</h3>
+                    <p>We design and build a site that reflects the business you have actually built.</p>
                 </div>
-                <div class="acc-item">
-                    <button type="button" class="acc-btn">E-commerce &amp; online stores.
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="acc-panel"><div class="acc-panel-in">
-                        Launch your store on Shopify, WooCommerce or a fully custom build. Secure payments, smart inventory and checkout flows built to convert.
-                        <a class="link-explore" href="pricing.html#development">Explore <i><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></i></a>
-                    </div></div>
+            </article>
+            <article class="ptile">
+                <img src="seo.jpg" alt="" loading="lazy">
+                <div class="ptile-body">
+                    <h3>Get found on Google and AI search</h3>
+                    <p>SEO- and GEO-ready architecture keeps you visible as search keeps changing.</p>
                 </div>
-                <div class="acc-item">
-                    <button type="button" class="acc-btn">Performance &amp; SEO.
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="acc-panel"><div class="acc-panel-in">
-                        Fast Core Web Vitals, technical SEO built in from day one and mobile-first responsive design. Sites that rank, and convert once visitors arrive.
-                        <a class="link-explore" href="pricing.html#seo">Explore <i><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></i></a>
-                    </div></div>
+            </article>
+            <article class="ptile">
+                <img src="Blog3.jpg" alt="" loading="lazy">
+                <div class="ptile-body">
+                    <h3>Capture more qualified leads</h3>
+                    <p>Lead capture is built into the browsing, search and content experience.</p>
                 </div>
-                <div class="acc-item">
-                    <button type="button" class="acc-btn">Maintenance &amp; support.
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="acc-panel"><div class="acc-panel-in">
-                        Updates, backups, security patches and content changes handled for you, so the site you launched stays the site your customers see.
-                        <a class="link-explore" href="pricing.html">Explore <i><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></i></a>
-                    </div></div>
-                </div>
-            </div>
+            </article>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ SHOWCASE 2 — CRM ═══════════════ -->
-<section class="band band--paper2 show--rev" id="crm">
+<!-- ═══════════════ FEATURE ROWS ═══════════════ -->
+<section class="band band--paper">
     <div class="wrap">
-        <div class="show-head">
-            <span class="eyebrow">Turn leads into deals</span>
-            <h2 class="h-lg"><span class="h-dim">One system for</span> every lead you win.</h2>
-            <p class="lede">Diamondback&reg; CRM keeps your pipeline, follow-ups and revenue in one clean dashboard &mdash; so nothing slips.</p>
+        <div class="pfeat">
+            <div class="pfeat-text">
+                <span class="pfeat-eyebrow">Custom design &amp; build</span>
+                <h2>Create a first impression as strong as the service you deliver</h2>
+                <p>Every site starts with a one-on-one design strategy call. We build around your brand, your market and the work you want more of &mdash; then hand you a page editor so updates never wait on us.</p>
+            </div>
+            <div class="pfeat-media"><img src="Brand2.jpg" alt="Custom website design work" loading="lazy"></div>
         </div>
 
-        <div class="show-body">
-            <div class="show-visual">
-                <img src="seo.jpg" alt="Diamondback CRM dashboard" loading="lazy">
+        <div class="pfeat pfeat--rev">
+            <div class="pfeat-text">
+                <span class="pfeat-eyebrow">Lead capture &amp; conversion</span>
+                <h2>Turn visitors into leads before they leave for a competitor</h2>
+                <p>Forms, quote requests and call tracking wired straight into Diamondback&reg; CRM. Every enquiry lands with its source attached, so you know which pages are actually paying for themselves.</p>
             </div>
+            <div class="pfeat-media"><img src="sara-kurfess-6lcT2kRPvnI-unsplash.jpg" alt="Lead capture and CRM" loading="lazy"></div>
+        </div>
 
-            <div class="show-acc" data-accordion>
-                <div class="acc-item open">
-                    <button type="button" class="acc-btn">Pipeline &amp; deal tracking.
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="acc-panel"><div class="acc-panel-in">
-                        Every lead, quote and job in one board. See what is hot, what is stalled and what is about to close without digging through your inbox.
-                        <a class="link-explore" href="pricing.html#crm-solutions">Explore <i><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></i></a>
-                    </div></div>
-                </div>
-                <div class="acc-item">
-                    <button type="button" class="acc-btn">Automated follow-up.
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="acc-panel"><div class="acc-panel-in">
-                        Email and text sequences that fire the moment a lead comes in, then keep nudging until they book &mdash; in your voice, not a template.
-                        <a class="link-explore" href="pricing.html#crm-solutions">Explore <i><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></i></a>
-                    </div></div>
-                </div>
-                <div class="acc-item">
-                    <button type="button" class="acc-btn">Revenue dashboards.
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="acc-panel"><div class="acc-panel-in">
-                        Monthly revenue, close rates and lead sources charted in real time, so you can tell which marketing is actually paying for itself.
-                        <a class="link-explore" href="pricing.html#crm-solutions">Explore <i><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></i></a>
-                    </div></div>
-                </div>
-                <div class="acc-item">
-                    <button type="button" class="acc-btn">Client portal &amp; invoicing.
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="acc-panel"><div class="acc-panel-in">
-                        Customers sign agreements, view invoices and message you from one branded portal &mdash; payments handled through Stripe.
-                        <a class="link-explore" href="customer_portal.html">Explore <i><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></i></a>
-                    </div></div>
-                </div>
+        <div class="pfeat">
+            <div class="pfeat-text">
+                <span class="pfeat-eyebrow">Commerce &amp; custom apps</span>
+                <h2>Sell online with a store built to scale with you</h2>
+                <p>Shopify, WooCommerce or a fully custom build &mdash; secure payments, real inventory handling and checkout flows built to convert rather than to look busy.</p>
             </div>
+            <div class="pfeat-media"><img src="Blog2.jpg" alt="E-commerce development" loading="lazy"></div>
+        </div>
+
+        <div class="pfeat pfeat--rev">
+            <div class="pfeat-text">
+                <span class="pfeat-eyebrow">Technical SEO &amp; AI search</span>
+                <h2>Rank on Google and show up in AI search</h2>
+                <p>Your site ships SEO- and GEO-ready, with the technical foundation Google and AI answer engines look for. We keep updating it as the rules shift, so you keep showing up when buyers go looking.</p>
+            </div>
+            <div class="pfeat-media"><img src="seo.jpg" alt="SEO and AI search optimisation" loading="lazy"></div>
         </div>
     </div>
 </section>
 
-<!-- ═══════════════ CLIENT STORY VIDEO ═══════════════ -->
-<section class="stories" id="stories">
-    <div class="stories-stage">
-        <div class="stories-media" id="storyMedia">
-            <img class="smedia is-on" src="Brand2.jpg" alt="" decoding="async">
-            <img class="smedia" src="Blog3.jpg" alt="" loading="lazy" decoding="async">
-            <img class="smedia" src="Blog1.jpg" alt="" loading="lazy" decoding="async">
-        </div>
-
-        <div class="stories-name">
-            <strong id="storyName">Marcus Rivera</strong>
-            <span id="storyRole">Owner, Rivera Roofing Co.</span>
-        </div>
-
-        <div class="stories-arrows">
-            <button type="button" data-story="prev" aria-label="Previous story"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
-            <button type="button" data-story="next" aria-label="Next story"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
-        </div>
-
-        <div class="stories-thumbs" id="storyThumbs">
-            <button type="button" class="sthumb" data-slide="1" data-name="Sarah Kim" data-role="Practice Manager, Bluebonnet Dental">
-                <img class="sthumb-avatar" src="https://i.pravatar.cc/120?img=47" alt="" loading="lazy">
-                <span>
-                    <span class="sthumb-logo-wrap"><img class="sthumb-logo" src="assets/bluebonnet-dental-logo.png" alt="Bluebonnet Dental logo" loading="lazy" onerror="this.closest('.sthumb-logo-wrap').style.display='none'"></span>
-                    <strong>Sarah Kim</strong>
-                    <em>Practice Manager, Bluebonnet Dental</em>
-                </span>
-            </button>
-            <button type="button" class="sthumb" data-slide="2" data-name="Dana Whitfield" data-role="Founder, Whitfield Interiors">
-                <img class="sthumb-avatar" src="https://i.pravatar.cc/120?img=58" alt="" loading="lazy">
-                <span>
-                    <span class="sthumb-logo-wrap"><img class="sthumb-logo" src="assets/whitfield-interiors-logo.png" alt="Whitfield Interiors logo" loading="lazy" onerror="this.closest('.sthumb-logo-wrap').style.display='none'"></span>
-                    <strong>Dana Whitfield</strong>
-                    <em>Founder, Whitfield Interiors</em>
-                </span>
-            </button>
-            <button type="button" class="sthumb is-active" data-slide="0" data-name="Marcus Rivera" data-role="Owner, Rivera Roofing Co.">
-                <img class="sthumb-avatar" src="https://i.pravatar.cc/120?img=32" alt="" loading="lazy">
-                <span>
-                    <span class="sthumb-logo-wrap"><img class="sthumb-logo" src="assets/rivera-roofing-logo.png" alt="Rivera Roofing Co. logo" loading="lazy" onerror="this.closest('.sthumb-logo-wrap').style.display='none'"></span>
-                    <strong>Marcus Rivera</strong>
-                    <em>Owner, Rivera Roofing Co.</em>
-                </span>
-            </button>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ TESTIMONIALS + STATS (shared background) ═══════════════ -->
+<!-- ═══════════════ TESTIMONIAL RAIL + STATS (shared background) ═══════════════ -->
 <div class="ink-block">
     <div class="ink-art" aria-hidden="true"></div>
 
@@ -3317,72 +3283,24 @@ body.modal-open .to-top { display: none !important; }
         <div class="testi-rail" id="testiRail">
             <div class="testi-track">
                 <div class="testi-set">
-                <figure class="tcard">
-                    <img src="https://i.pravatar.cc/480?img=32" alt="" loading="lazy">
-                    <figcaption><strong>Marcus Rivera</strong><span>Rivera Roofing Co.</span></figcaption>
-                </figure>
-                <figure class="tcard">
-                    <img src="https://i.pravatar.cc/480?img=47" alt="" loading="lazy">
-                    <figcaption><strong>Sarah Kim</strong><span>Bluebonnet Dental</span></figcaption>
-                </figure>
-                <figure class="tcard">
-                    <img src="https://i.pravatar.cc/480?img=12" alt="" loading="lazy">
-                    <figcaption><strong>Tyler Johnson</strong><span>TJ Custom Fabrication</span></figcaption>
-                </figure>
-                <figure class="tcard">
-                    <img src="https://i.pravatar.cc/480?img=58" alt="" loading="lazy">
-                    <figcaption><strong>Dana Whitfield</strong><span>Whitfield Interiors</span></figcaption>
-                </figure>
-                <figure class="tcard">
-                    <img src="https://i.pravatar.cc/480?img=15" alt="" loading="lazy">
-                    <figcaption><strong>Andre Cole</strong><span>Cole Fitness Studio</span></figcaption>
-                </figure>
-                <figure class="tcard">
-                    <img src="https://i.pravatar.cc/480?img=26" alt="" loading="lazy">
-                    <figcaption><strong>Priya Raman</strong><span>Raman Law Group</span></figcaption>
-                </figure>
-                <figure class="tcard">
-                    <img src="https://i.pravatar.cc/480?img=60" alt="" loading="lazy">
-                    <figcaption><strong>Beau Latham</strong><span>Latham Land & Cattle</span></figcaption>
-                </figure>
-                <figure class="tcard">
-                    <img src="https://i.pravatar.cc/480?img=44" alt="" loading="lazy">
-                    <figcaption><strong>Nicole Vargas</strong><span>Vargas Event Co.</span></figcaption>
-                </figure>
+                    <figure class="tcard"><img src="https://i.pravatar.cc/480?img=32" alt="" loading="lazy"><figcaption><strong>Marcus Rivera</strong><span>Rivera Roofing Co.</span></figcaption></figure>
+                    <figure class="tcard"><img src="https://i.pravatar.cc/480?img=47" alt="" loading="lazy"><figcaption><strong>Sarah Kim</strong><span>Bluebonnet Dental</span></figcaption></figure>
+                    <figure class="tcard"><img src="https://i.pravatar.cc/480?img=12" alt="" loading="lazy"><figcaption><strong>Tyler Johnson</strong><span>TJ Custom Fabrication</span></figcaption></figure>
+                    <figure class="tcard"><img src="https://i.pravatar.cc/480?img=58" alt="" loading="lazy"><figcaption><strong>Dana Whitfield</strong><span>Whitfield Interiors</span></figcaption></figure>
+                    <figure class="tcard"><img src="https://i.pravatar.cc/480?img=15" alt="" loading="lazy"><figcaption><strong>Andre Cole</strong><span>Cole Fitness Studio</span></figcaption></figure>
+                    <figure class="tcard"><img src="https://i.pravatar.cc/480?img=26" alt="" loading="lazy"><figcaption><strong>Priya Raman</strong><span>Raman Law Group</span></figcaption></figure>
+                    <figure class="tcard"><img src="https://i.pravatar.cc/480?img=60" alt="" loading="lazy"><figcaption><strong>Beau Latham</strong><span>Latham Land &amp; Cattle</span></figcaption></figure>
+                    <figure class="tcard"><img src="https://i.pravatar.cc/480?img=44" alt="" loading="lazy"><figcaption><strong>Nicole Vargas</strong><span>Vargas Event Co.</span></figcaption></figure>
                 </div>
                 <div class="testi-set" aria-hidden="true">
-                <figure class="tcard" aria-hidden="true">
-                    <img src="https://i.pravatar.cc/480?img=32" alt="" loading="lazy">
-                    <figcaption><strong>Marcus Rivera</strong><span>Rivera Roofing Co.</span></figcaption>
-                </figure>
-                <figure class="tcard" aria-hidden="true">
-                    <img src="https://i.pravatar.cc/480?img=47" alt="" loading="lazy">
-                    <figcaption><strong>Sarah Kim</strong><span>Bluebonnet Dental</span></figcaption>
-                </figure>
-                <figure class="tcard" aria-hidden="true">
-                    <img src="https://i.pravatar.cc/480?img=12" alt="" loading="lazy">
-                    <figcaption><strong>Tyler Johnson</strong><span>TJ Custom Fabrication</span></figcaption>
-                </figure>
-                <figure class="tcard" aria-hidden="true">
-                    <img src="https://i.pravatar.cc/480?img=58" alt="" loading="lazy">
-                    <figcaption><strong>Dana Whitfield</strong><span>Whitfield Interiors</span></figcaption>
-                </figure>
-                <figure class="tcard" aria-hidden="true">
-                    <img src="https://i.pravatar.cc/480?img=15" alt="" loading="lazy">
-                    <figcaption><strong>Andre Cole</strong><span>Cole Fitness Studio</span></figcaption>
-                </figure>
-                <figure class="tcard" aria-hidden="true">
-                    <img src="https://i.pravatar.cc/480?img=26" alt="" loading="lazy">
-                    <figcaption><strong>Priya Raman</strong><span>Raman Law Group</span></figcaption>
-                </figure>
-                <figure class="tcard" aria-hidden="true">
-                    <img src="https://i.pravatar.cc/480?img=60" alt="" loading="lazy">
-                    <figcaption><strong>Beau Latham</strong><span>Latham Land & Cattle</span></figcaption>
-                </figure>
-                <figure class="tcard" aria-hidden="true">
-                    <img src="https://i.pravatar.cc/480?img=44" alt="" loading="lazy">
-                    <figcaption><strong>Nicole Vargas</strong><span>Vargas Event Co.</span></figcaption>
-                </figure>
+                    <figure class="tcard" aria-hidden="true"><img src="https://i.pravatar.cc/480?img=32" alt="" loading="lazy"><figcaption><strong>Marcus Rivera</strong><span>Rivera Roofing Co.</span></figcaption></figure>
+                    <figure class="tcard" aria-hidden="true"><img src="https://i.pravatar.cc/480?img=47" alt="" loading="lazy"><figcaption><strong>Sarah Kim</strong><span>Bluebonnet Dental</span></figcaption></figure>
+                    <figure class="tcard" aria-hidden="true"><img src="https://i.pravatar.cc/480?img=12" alt="" loading="lazy"><figcaption><strong>Tyler Johnson</strong><span>TJ Custom Fabrication</span></figcaption></figure>
+                    <figure class="tcard" aria-hidden="true"><img src="https://i.pravatar.cc/480?img=58" alt="" loading="lazy"><figcaption><strong>Dana Whitfield</strong><span>Whitfield Interiors</span></figcaption></figure>
+                    <figure class="tcard" aria-hidden="true"><img src="https://i.pravatar.cc/480?img=15" alt="" loading="lazy"><figcaption><strong>Andre Cole</strong><span>Cole Fitness Studio</span></figcaption></figure>
+                    <figure class="tcard" aria-hidden="true"><img src="https://i.pravatar.cc/480?img=26" alt="" loading="lazy"><figcaption><strong>Priya Raman</strong><span>Raman Law Group</span></figcaption></figure>
+                    <figure class="tcard" aria-hidden="true"><img src="https://i.pravatar.cc/480?img=60" alt="" loading="lazy"><figcaption><strong>Beau Latham</strong><span>Latham Land &amp; Cattle</span></figcaption></figure>
+                    <figure class="tcard" aria-hidden="true"><img src="https://i.pravatar.cc/480?img=44" alt="" loading="lazy"><figcaption><strong>Nicole Vargas</strong><span>Vargas Event Co.</span></figcaption></figure>
                 </div>
             </div>
         </div>
@@ -3398,7 +3316,7 @@ body.modal-open .to-top { display: none !important; }
 
     <section class="band band--ink stats">
         <div class="wrap stats-inner">
-            <h2 class="h-md">We drive more growth and ROI for our clients</h2>
+            <h2 class="h-md">Powered by more of the work that actually moves the needle</h2>
             <div>
                 <div class="stat-row"><b data-count="120" data-suffix="+">0</b><span>websites and web apps shipped for U.S. businesses</span></div>
                 <div class="stat-row"><b data-count="3.4" data-decimals="1" data-suffix="x">0</b><span>average lift in qualified leads after launch</span></div>
@@ -3408,243 +3326,172 @@ body.modal-open .to-top { display: none !important; }
     </section>
 </div>
 
-<!-- ═══════════════ SHOWCASE 3 — MARKETING (DARK) ═══════════════ -->
-<section class="band band--ink" id="marketing">
-    <div class="wrap">
-        <div class="show-head">
-            <span class="eyebrow">Keep clients for life</span>
-            <h2 class="h-lg"><span class="h-dim">Marketing that keeps</span> the phone ringing.</h2>
-            <p class="lede">Search, ads and social handled together, so the traffic you pay for lands on a site that is ready to convert it.</p>
-        </div>
-
-        <div class="show-body">
-            <div class="show-visual">
-                <img src="Paid.jpg" alt="Paid ads and marketing work" loading="lazy">
-            </div>
-
-            <div class="show-acc" data-accordion>
-                <div class="acc-item open">
-                    <button type="button" class="acc-btn">SEO &amp; local search.
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="acc-panel"><div class="acc-panel-in">
-                        Technical SEO, local listings and content built around what your customers actually search for &mdash; including how AI assistants now surface businesses.
-                        <a class="link-explore" href="pricing.html#seo">Explore <i><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></i></a>
-                    </div></div>
-                </div>
-                <div class="acc-item">
-                    <button type="button" class="acc-btn">Paid ads management.
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="acc-panel"><div class="acc-panel-in">
-                        Campaigns built for performance, not impressions. Landing pages, tracking and budget pacing managed alongside the site they point at.
-                        <a class="link-explore" href="pricing.html#marketing">Explore <i><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></i></a>
-                    </div></div>
-                </div>
-                <div class="acc-item">
-                    <button type="button" class="acc-btn">Branded mobile experience.
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </button>
-                    <div class="acc-panel"><div class="acc-panel-in">
-                        Give customers a fast, app-like experience on the phone they already carry &mdash; your brand in their pocket, not a shrunken desktop site.
-                        <a class="link-explore" href="portfolio.html">Explore <i><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4"><path d="m9 18 6-6-6-6"/></svg></i></a>
-                    </div></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- ═══════════════ CASE / ARTICLE CARDS ═══════════════ -->
+<!-- ═══════════════ CASE STUDY ═══════════════ -->
 <section class="band band--paper">
     <div class="wrap">
-        <div class="show-head">
-            <span class="eyebrow">From the desk</span>
-            <h2 class="h-lg">What we are writing about</h2>
+        <div class="pcase-rail" id="caseRail">
+            <article class="pcase">
+                <div class="pcase-media"><img src="Blog1.jpg" alt="" loading="lazy"></div>
+                <div class="pcase-body">
+                    <h3>Rivera Roofing &amp; Diamondback: a full rebuild that turned a dead site into the crew&rsquo;s best salesman</h3>
+                    <div class="pcase-stat">
+                        <b>3.1x</b>
+                        <span>more quote requests in the first six months</span>
+                    </div>
+                    <div class="pcase-who">
+                        <strong>Marcus Rivera</strong>
+                        <span>Owner, Rivera Roofing Co.</span>
+                    </div>
+                </div>
+            </article>
+
+            <article class="pcase">
+                <div class="pcase-media"><img src="Blog2.jpg" alt="" loading="lazy"></div>
+                <div class="pcase-body">
+                    <h3>Bluebonnet Dental: a new site and booking flow that filled the schedule without more ad spend</h3>
+                    <div class="pcase-stat">
+                        <b>+240%</b>
+                        <span>online appointment requests year over year</span>
+                    </div>
+                    <div class="pcase-who">
+                        <strong>Sarah Kim</strong>
+                        <span>Practice Manager, Bluebonnet Dental</span>
+                    </div>
+                </div>
+            </article>
+
+            <article class="pcase">
+                <div class="pcase-media"><img src="Blog3.jpg" alt="" loading="lazy"></div>
+                <div class="pcase-body">
+                    <h3>Whitfield Interiors: a storefront rebuild that made the catalogue worth browsing</h3>
+                    <div class="pcase-stat">
+                        <b>2.6x</b>
+                        <span>revenue per visitor after the store rebuild</span>
+                    </div>
+                    <div class="pcase-who">
+                        <strong>Dana Whitfield</strong>
+                        <span>Founder, Whitfield Interiors</span>
+                    </div>
+                </div>
+            </article>
         </div>
 
-        <div class="cards">
-            <a class="case" href="blog.html">
-                <div class="case-media">
-                    <img src="Blog1.jpg" alt="" loading="lazy">
-                    <div class="case-who"><strong>Conversion design</strong><span>Guide</span></div>
-                </div>
-                <div class="case-body">
-                    <div class="case-tag">Web design</div>
-                    <h3>From clicks to conversions: designing websites that sell</h3>
-                </div>
-            </a>
-
-            <a class="case" href="blog.html">
-                <div class="case-media">
-                    <img src="Blog2.jpg" alt="" loading="lazy">
-                    <div class="case-who"><strong>2026 trends</strong><span>Guide</span></div>
-                </div>
-                <div class="case-body">
-                    <div class="case-tag">Trends</div>
-                    <h3>10 web design trends that will dominate in 2026</h3>
-                </div>
-            </a>
-
-            <a class="case" href="blog.html">
-                <div class="case-media">
-                    <img src="Blog3.jpg" alt="" loading="lazy">
-                    <div class="case-who"><strong>UX psychology</strong><span>Guide</span></div>
-                </div>
-                <div class="case-body">
-                    <div class="case-tag">User experience</div>
-                    <h3>The psychology of web design: how color, layout and UX shape your audience</h3>
-                </div>
-            </a>
-
-            <a class="case" href="pricing.html#crm-solutions">
-                <div class="case-media">
-                    <img src="sara-kurfess-6lcT2kRPvnI-unsplash.jpg" alt="" loading="lazy">
-                    <div class="case-who"><strong>Diamondback CRM</strong><span>Product</span></div>
-                </div>
-                <div class="case-body">
-                    <div class="case-tag">CRM</div>
-                    <h3>Stop losing deals to disorganization: lead tracking that actually gets used</h3>
-                </div>
-            </a>
-        </div>
-
-        <div class="cards-foot" aria-hidden="true">
-            <div class="cards-arrows">
-                <button type="button" data-cards="prev" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
-                <button type="button" data-cards="next" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        <div class="prail-foot">
+            <div class="prail-arrows">
+                <button type="button" data-rail="prev" data-target="caseRail" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
+                <button type="button" data-rail="next" data-target="caseRail" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
             </div>
-            <div class="cards-progress"><i></i></div>
+            <a class="btn btn--gold" href="portfolio.html">Read case studies</a>
         </div>
-
-        <a class="btn btn--gold cards-cta" href="blog.html">Read the blog</a>
     </div>
 </section>
 
-<!-- ═══════════════ TRUSTED + AWARDS + LOGO RAIL ═══════════════ -->
-<section class="band band--paper trustband">
+<!-- ═══════════════ REVIEW WALL ═══════════════ -->
+<section class="band band--ink">
     <div class="wrap">
-        <div class="trust-cards">
-            <div class="trust-card">
-                <h2 class="h-md">Trusted by business owners in Texas and across all 50 states</h2>
-                <div class="trusted-proof">
-                    <div class="proof-stars">
-                        <svg viewBox="0 0 24 24" fill="#c9a35e" width="16" height="16"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <svg viewBox="0 0 24 24" fill="#c9a35e" width="16" height="16"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <svg viewBox="0 0 24 24" fill="#c9a35e" width="16" height="16"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <svg viewBox="0 0 24 24" fill="#c9a35e" width="16" height="16"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                        <svg viewBox="0 0 24 24" fill="#c9a35e" width="16" height="16"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    </div>
-                    <p><strong>5.0/5</strong> based on client reviews</p>
-                    <div class="avatars">
-                        <img src="https://i.pravatar.cc/80?img=32" alt="" loading="lazy">
-                        <img src="https://i.pravatar.cc/80?img=47" alt="" loading="lazy">
-                        <img src="https://i.pravatar.cc/80?img=12" alt="" loading="lazy">
-                    </div>
-                </div>
+        <div class="pjoin">
+            <div>
+                <h2>Join the businesses we build for</h2>
+                <p>See how we build brands, lift ROI and make the whole thing easier to run.</p>
             </div>
-
-            <div class="trust-card">
-                <div class="stack-label">Built with</div>
-                <div class="stack-grid">
-                    <img src="/assets/react.svg" alt="React" loading="lazy">
-                    <img src="/assets/node.svg" alt="Node.js" loading="lazy">
-                    <img src="/assets/postgresql.svg" alt="PostgreSQL" loading="lazy">
-                    <img src="/assets/stripe.svg" alt="Stripe" loading="lazy">
-                    <img src="/assets/shopify.svg" alt="Shopify" loading="lazy">
-                    <img src="/assets/twilio.svg" alt="Twilio" loading="lazy">
+            <div class="pjoin-proof">
+                <div class="proof-stars">
+                    <svg viewBox="0 0 24 24" fill="#f4c87e"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="#f4c87e"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="#f4c87e"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="#f4c87e"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <svg viewBox="0 0 24 24" fill="#f4c87e"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                </div>
+                <span>5.0/5 based on client reviews</span>
+                <div class="avatars">
+                    <img src="https://i.pravatar.cc/80?img=32" alt="" loading="lazy">
+                    <img src="https://i.pravatar.cc/80?img=47" alt="" loading="lazy">
+                    <img src="https://i.pravatar.cc/80?img=12" alt="" loading="lazy">
                 </div>
             </div>
         </div>
-    </div>
 
-                <div class="logos logos--light">
-        <div class="logos-mask">
-            <div class="logo-track">
-                <div class="logo-set">
-                    <span class="logo-slot"><img class="logo-img" src="assets/google.svg" alt="Google logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/microsoft.svg" alt="Microsoft logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/amazon.svg" alt="Amazon logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/react.svg" alt="React logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/vue.svg" alt="Vue logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/nodejs.svg" alt="Node.js logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/shopify.svg" alt="Shopify logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/stripe.svg" alt="Stripe logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/twilio.svg" alt="Twilio logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/mongodb.svg" alt="MongoDB logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/postgresql.svg" alt="PostgreSQL logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot"><img class="logo-img" src="assets/sass.svg" alt="Sass logo" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
-                <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
-                <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
-                <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
-                <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
-                <div class="logo-set" aria-hidden="true">
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/google.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Google</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/microsoft.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Microsoft</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/amazon.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Amazon</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/react.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">React</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/vue.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Vue</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/nodejs.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Node.js</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/shopify.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Shopify</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/stripe.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Stripe</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/twilio.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Twilio</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/mongodb.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">MongoDB</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/postgresql.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">PostgreSQL</span></span>
-                    <span class="logo-slot" aria-hidden="true"><img class="logo-img" src="assets/sass.svg" alt="" aria-hidden="true" loading="lazy" onerror="this.style.display='none'" onload="this.nextElementSibling.style.display='none'"><span class="logo-word">Sass</span></span>
-                </div>
+        <div class="pquotes" id="quoteRail">
+            <figure class="pquote">
+                <p>Diamondback rebuilt our site from scratch and it finally looks like the work we actually do. We get calls every week from people who found us on Google instead of a referral.</p>
+                <figcaption>
+                    <img src="https://i.pravatar.cc/160?img=32" alt="" loading="lazy">
+                    <span><strong>Marcus Rivera</strong><em>Rivera Roofing Co. &mdash; Forney, TX</em></span>
+                </figcaption>
+            </figure>
+            <figure class="pquote">
+                <p>Everyone we worked with bent over backwards to get this right. The booking flow alone paid for the build inside a quarter, and support has never once left us waiting.</p>
+                <figcaption>
+                    <img src="https://i.pravatar.cc/160?img=47" alt="" loading="lazy">
+                    <span><strong>Sarah Kim</strong><em>Bluebonnet Dental &mdash; Rockwall, TX</em></span>
+                </figcaption>
+            </figure>
+            <figure class="pquote">
+                <p>I really feel there is no way you can lose when you hand this over and let them run with it. They know what converts, and they were honest with us when an idea of ours would not.</p>
+                <figcaption>
+                    <img src="https://i.pravatar.cc/160?img=58" alt="" loading="lazy">
+                    <span><strong>Dana Whitfield</strong><em>Whitfield Interiors &mdash; Rockwall, TX</em></span>
+                </figcaption>
+            </figure>
+            <figure class="pquote">
+                <p>Hiring Diamondback was one of the better decisions we have made. They ship changes fast, and they doubled our monthly traffic through SEO inside a year.</p>
+                <figcaption>
+                    <img src="https://i.pravatar.cc/160?img=12" alt="" loading="lazy">
+                    <span><strong>Tyler Johnson</strong><em>TJ Custom Fabrication &mdash; Terrell, TX</em></span>
+                </figcaption>
+            </figure>
+            <figure class="pquote">
+                <p>My experience has exceeded every expectation. The CRM means nothing slips, and I can finally see which pages are actually bringing in work.</p>
+                <figcaption>
+                    <img src="https://i.pravatar.cc/160?img=26" alt="" loading="lazy">
+                    <span><strong>Priya Raman</strong><em>Raman Law Group &mdash; Dallas, TX</em></span>
+                </figcaption>
+            </figure>
+        </div>
+
+        <div class="prail-foot" style="color:#fff">
+            <div class="prail-arrows">
+                <button type="button" data-rail="prev" data-target="quoteRail" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
+                <button type="button" data-rail="next" data-target="quoteRail" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+            </div>
+            <a class="btn btn--gold" href="portfolio.html">Reviews</a>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════════════ FAQ ═══════════════ -->
+<section class="band band--paper">
+    <div class="wrap pfaq">
+        <h2>Frequently Asked Questions</h2>
+
+        <div data-faq>
+            <div class="faq-item open">
+                <button type="button" class="faq-btn"><span class="faq-ico" aria-hidden="true"></span>Do I really need my own website?</button>
+                <div class="faq-panel"><div class="faq-panel-in">Yes. People look you up before they ever call. A directory listing or a Facebook page gives them the basics, but your own site is what gives them a reason to pick you over the next three names on the list.</div></div>
+            </div>
+            <div class="faq-item">
+                <button type="button" class="faq-btn"><span class="faq-ico" aria-hidden="true"></span>How is this different from a template or a DIY site builder?</button>
+                <div class="faq-panel"><div class="faq-panel-in">A template gives you a starting point and leaves the rest to you. We start with a one-on-one strategy call, build around your brand and your market, and hand over something that is genuinely yours &mdash; not a theme with your logo dropped in the corner.</div></div>
+            </div>
+            <div class="faq-item">
+                <button type="button" class="faq-btn"><span class="faq-ico" aria-hidden="true"></span>What does the design process look like?</button>
+                <div class="faq-panel"><div class="faq-panel-in">We work one-on-one with you to understand the business, the market and the work you want more of. We handle the build and fold in your feedback before anything goes live.</div></div>
+            </div>
+            <div class="faq-item">
+                <button type="button" class="faq-btn"><span class="faq-ico" aria-hidden="true"></span>How long does a build take?</button>
+                <div class="faq-panel"><div class="faq-panel-in">Most business sites run four to eight weeks from kickoff to launch, depending on how many pages there are and how quickly content and photography come together on your end.</div></div>
+            </div>
+            <div class="faq-item">
+                <button type="button" class="faq-btn"><span class="faq-ico" aria-hidden="true"></span>Can I update the site myself after launch?</button>
+                <div class="faq-panel"><div class="faq-panel-in">Yes. You get an editor for text, images and pages, and we walk you through it before handover. If you would rather not touch it, our maintenance plans cover content changes for you.</div></div>
+            </div>
+            <div class="faq-item">
+                <button type="button" class="faq-btn"><span class="faq-ico" aria-hidden="true"></span>Will my site rank on Google and in AI search?</button>
+                <div class="faq-panel"><div class="faq-panel-in">Every build ships with technical SEO in place &mdash; clean markup, fast Core Web Vitals, structured data and a sitemap. Ranking also depends on your market and how much ongoing SEO work you want us doing after launch.</div></div>
+            </div>
+            <div class="faq-item">
+                <button type="button" class="faq-btn"><span class="faq-ico" aria-hidden="true"></span>Do you handle hosting and support?</button>
+                <div class="faq-panel"><div class="faq-panel-in">We do. Hosting, backups, security patches and updates are covered under our maintenance plans, and support requests typically get a reply the same business day.</div></div>
             </div>
         </div>
     </div>
@@ -5941,6 +5788,41 @@ document.addEventListener('keydown', function(e) {
     });
   });
 
+  /* ---- FAQ accordion ---- */
+  document.querySelectorAll('[data-faq]').forEach(function (group) {
+    group.querySelectorAll('.faq-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var item = b.parentElement;
+        var wasOpen = item.classList.contains('open');
+        group.querySelectorAll('.faq-item.open').forEach(function (o) { o.classList.remove('open'); });
+        if (!wasOpen) item.classList.add('open');
+      });
+    });
+  });
+
+  /* ---- Generic snap rails (case studies, review wall) ---- */
+  document.querySelectorAll('[data-rail]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var rail = document.getElementById(b.getAttribute('data-target'));
+      if (!rail || !rail.children.length) return;
+      var step = rail.children[0].getBoundingClientRect().width + 18;
+      rail.scrollBy({ left: b.getAttribute('data-rail') === 'prev' ? -step : step, behavior: 'smooth' });
+    });
+  });
+  document.querySelectorAll('.pcase-rail, .pquotes').forEach(function (rail) {
+    function sync() {
+      var max = rail.scrollWidth - rail.clientWidth;
+      document.querySelectorAll('[data-target="' + rail.id + '"]').forEach(function (b) {
+        b.disabled = b.getAttribute('data-rail') === 'prev'
+          ? rail.scrollLeft <= 2
+          : rail.scrollLeft >= max - 2;
+      });
+    }
+    rail.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync);
+    sync();
+  });
+
   /* ---- Footer column accordions (mobile only) ---- */
   document.querySelectorAll('.foot-col-btn').forEach(function (b) {
     b.addEventListener('click', function () {
@@ -5994,10 +5876,10 @@ document.addEventListener('keydown', function(e) {
     });
   });
 
-  /* ---- Nav surface: black at rest, and the border only drops out while
-         hovering/focusing a dropdown link or a mega menu is open. Handled
-         in CSS via :has(); this mirrors it with a class so older browsers
-         without :has() support behave the same. ---- */
+  /* ---- Nav surface: matches the hero at rest, matches the announcement
+         bar (--ink) once you hover a dropdown link, a dropdown is open, or
+         the page is scrolled. mega-open is mirrored via JS (in addition to
+         the CSS :has()) for browsers without :has() support. ---- */
   (function () {
     if (!nav) return;
     var parents = nav.querySelectorAll('.nav-links > li');
@@ -6014,6 +5896,10 @@ document.addEventListener('keydown', function(e) {
         li.addEventListener(evt, function () { requestAnimationFrame(sync); });
       });
     });
+
+    function syncScroll() { nav.classList.toggle('nav--scrolled', window.scrollY > 4); }
+    syncScroll();
+    window.addEventListener('scroll', function () { requestAnimationFrame(syncScroll); }, { passive: true });
   })();
 
   /* ---- Mobile action bar ---- */

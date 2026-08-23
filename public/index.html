@@ -2687,46 +2687,74 @@ body.modal-open { overflow: hidden; }
 <div class="drawer" id="drawer">
     <div class="drawer-head">
         <div class="drawer-head-top">
-            <span class="drawer-brand">Diamondback Coding</span>
-            <button class="drawer-close" id="drawerClose" aria-label="Close menu">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-            </button>
+            <a href="index.html" class="drawer-brand">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M12 12L3 7.5" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M12 12V21" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M12 12L21 7.5" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                Diamondback Coding
+            </a>
+            <div class="drawer-head-right">
+                <button class="drawer-cta" onclick="closeDrawer(); openModal();">Get started</button>
+                <button class="drawer-close" id="drawerClose" aria-label="Close menu">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
         </div>
-        <p class="drawer-line">Websites, CRM and SEO &mdash; <em>built to bring you work.</em></p>
     </div>
 
     <ul class="drawer-nav">
-        <li><a href="index.html">Home<span class="rc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a></li>
-        <li><a href="portfolio.html">Work<span class="rc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg></span></a></li>
         <li data-acc>
             <button type="button">Services<span class="rc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
-            <ul class="drawer-sub">
-                <li><a href="pricing.html#development">Website Design &amp; Development</a></li>
-                <li><a href="pricing.html#seo">SEO &amp; Digital Marketing</a></li>
-                <li><a href="pricing.html#development">E-Commerce Development</a></li>
-                <li><a href="pricing.html#crm-solutions">Diamondback CRM</a></li>
-                <li><a href="pricing.html#development">Custom Web Applications</a></li>
-                <li><a href="pricing.html">View Pricing</a></li>
-                <li><a href="customer_portal.html"><strong>Customer Portal</strong><small>Invoices, agreements and messages</small></a></li>
-                <li><a href="client_portal.html"><strong>CodeNexus CRM</strong><small>For CRM subscribers</small></a></li>
-            </ul>
+            <div class="drawer-sub">
+                <div class="drawer-sub-in">
+                    <p class="drawer-group">Attract more clients</p>
+                    <a href="pricing.html#development"><strong>Website Design &amp; Development</strong><small>Launch a site built to convert</small></a>
+                    <a href="pricing.html#seo"><strong>SEO &amp; Digital Marketing</strong><small>Get found on Google and AI search</small></a>
+                    <a href="pricing.html#development"><strong>E-Commerce Development</strong><small>Sell online with a store that scales</small></a>
+
+                    <p class="drawer-group">Turn leads into deals</p>
+                    <a href="pricing.html#crm-solutions"><strong>Diamondback CRM</strong><small>Every lead, deal and dollar in one place</small></a>
+                    <a href="pricing.html#crm-solutions"><strong>Automated Follow-Up</strong><small>Respond and nurture in minutes</small></a>
+                    <a href="pricing.html#development"><strong>Custom Web Applications</strong><small>Internal tools around your workflow</small></a>
+
+                    <p class="drawer-group">Keep clients for life</p>
+                    <a href="customer_portal.html"><strong>Customer Portal</strong><small>Invoices, agreements and messages</small></a>
+                    <a href="client_portal.html"><strong>CodeNexus CRM</strong><small>For CRM subscribers</small></a>
+                    <a href="pricing.html"><strong>Maintenance &amp; Support</strong><small>Updates, backups and security handled</small></a>
+                </div>
+            </div>
         </li>
+        <li><a href="pricing.html">Pricing</a></li>
+        <li><a href="portfolio.html">Portfolio</a></li>
+        <li><a href="process.html">Our Process</a></li>
         <li data-acc>
-            <button type="button">Company<span class="rc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
-            <ul class="drawer-sub">
-                <li><a href="about.html">About Us</a></li>
-                <li><a href="process.html">Our Process</a></li>
-                <li><a href="blog.html">Blog</a></li>
-                <li><a href="careers.html">Careers</a></li>
-                <li><a href="contact.html">Contact Us</a></li>
-            </ul>
+            <button type="button">More<span class="rc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
+            <div class="drawer-sub">
+                <div class="drawer-sub-in">
+                    <p class="drawer-group">Resources</p>
+                    <a href="blog.html"><strong>Blog</strong><small>Guides on design, SEO and CRM</small></a>
+                    <a href="customer_portal.html"><strong>Customer Portal</strong><small>Invoices, agreements and messages</small></a>
+                    <a href="client_portal.html"><strong>CodeNexus CRM</strong><small>For CRM subscribers</small></a>
+
+                    <p class="drawer-group">Company</p>
+                    <a href="about.html"><strong>About Us</strong><small>A Texas studio building for U.S. businesses</small></a>
+                    <a href="careers.html"><strong>Careers</strong><small>Work with us</small></a>
+                    <a href="contact.html"><strong>Contact Us</strong><small>Tell us about your project</small></a>
+                </div>
+            </div>
         </li>
     </ul>
 
     <div class="drawer-foot">
-        <button class="btn btn--dark btn--block" onclick="closeDrawer(); openModal();">Start a project</button>
-        <a class="btn btn--ghost-dark btn--block" href="tel:+15129800393">Call (512) 980-0393</a>
-        <span class="drawer-note">Forney &amp; Rockwall, TX &mdash; building for clients nationwide.</span>
+        <div class="drawer-legal">
+            <a href="privacy_policy.html">Privacy Policy</a>
+            <a href="terms_of_service.html">Terms of Service</a>
+            <a href="contact.html">Accessibility</a>
+        </div>
+        <a class="drawer-call" href="tel:+15129800393">(512) 980-0393</a>
     </div>
 </div>
 
@@ -3353,6 +3381,16 @@ body.modal-open { overflow: hidden; }
                 </div>
             </a>
         </div>
+
+        <div class="cards-foot" aria-hidden="true">
+            <div class="cards-arrows">
+                <button type="button" data-cards="prev" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
+                <button type="button" data-cards="next" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+            </div>
+            <div class="cards-progress"><i></i></div>
+        </div>
+
+        <a class="btn btn--gold cards-cta" href="blog.html">Read the blog</a>
     </div>
 </section>
 
@@ -3507,42 +3545,50 @@ body.modal-open { overflow: hidden; }
         </div>
 
         <div class="foot-cols">
-            <div>
-                <h4>Products</h4>
-                <a href="pricing.html#development">Business Websites</a>
-                <a href="pricing.html#development">Landing Pages</a>
-                <a href="pricing.html#crm-solutions">Diamondback CRM</a>
-                <a href="pricing.html#seo">SEO &amp; GEO</a>
-                <a href="pricing.html#marketing">Paid Ads Management</a>
-                <a href="pricing.html#development">E-Commerce Stores</a>
-                <a href="pricing.html#development">Custom Web Apps</a>
-                <a href="pricing.html">Maintenance &amp; Support</a>
-            </div>
-            <div>
-                <h4>Solutions</h4>
-                <a href="pricing.html">For Local Businesses</a>
-                <a href="pricing.html#enterprise">For Enterprises</a>
-                <a href="pricing.html#freelance">For Freelancers</a>
-                <a href="pricing.html#crm-solutions">For Growing Teams</a>
-            </div>
-            <div>
-                <h4>Company</h4>
-                <a href="about.html">About Us</a>
-                <a href="portfolio.html">Portfolio</a>
-                <a href="process.html">Our Process</a>
-                <a href="pricing.html">Pricing</a>
-                <a href="careers.html">Careers</a>
-                <a href="contact.html">Contact Us</a>
-            </div>
-            <div>
-                <h4>Resources</h4>
-                <a href="blog.html">Blog</a>
-                <a href="customer_portal.html">Customer Portal</a>
-                <a href="client_portal.html">CodeNexus CRM</a>
-                <a href="privacy_policy.html">Privacy Policy</a>
-                <a href="terms_of_service.html">Terms of Service</a>
-            </div>
-        </div>
+    <div class="foot-col">
+        <button type="button" class="foot-col-btn"><h4>Products</h4><span class="fc-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
+        <div class="foot-col-links"><div class="foot-col-links-in">
+            <a href="pricing.html#development">Business Websites</a>
+            <a href="pricing.html#development">Landing Pages</a>
+            <a href="pricing.html#crm-solutions">Diamondback CRM</a>
+            <a href="pricing.html#seo">SEO &amp; GEO</a>
+            <a href="pricing.html#marketing">Paid Ads Management</a>
+            <a href="pricing.html#development">E-Commerce Stores</a>
+            <a href="pricing.html#development">Custom Web Apps</a>
+            <a href="pricing.html">Maintenance &amp; Support</a>
+        </div></div>
+    </div>
+    <div class="foot-col">
+        <button type="button" class="foot-col-btn"><h4>Solutions</h4><span class="fc-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
+        <div class="foot-col-links"><div class="foot-col-links-in">
+            <a href="pricing.html">For Local Businesses</a>
+            <a href="pricing.html#enterprise">For Enterprises</a>
+            <a href="pricing.html#freelance">For Freelancers</a>
+            <a href="pricing.html#crm-solutions">For Growing Teams</a>
+        </div></div>
+    </div>
+    <div class="foot-col">
+        <button type="button" class="foot-col-btn"><h4>Company</h4><span class="fc-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
+        <div class="foot-col-links"><div class="foot-col-links-in">
+            <a href="about.html">About Us</a>
+            <a href="portfolio.html">Portfolio</a>
+            <a href="process.html">Our Process</a>
+            <a href="pricing.html">Pricing</a>
+            <a href="careers.html">Careers</a>
+            <a href="contact.html">Contact Us</a>
+        </div></div>
+    </div>
+    <div class="foot-col">
+        <button type="button" class="foot-col-btn"><h4>Resources</h4><span class="fc-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button>
+        <div class="foot-col-links"><div class="foot-col-links-in">
+            <a href="blog.html">Blog</a>
+            <a href="customer_portal.html">Customer Portal</a>
+            <a href="client_portal.html">CodeNexus CRM</a>
+            <a href="privacy_policy.html">Privacy Policy</a>
+            <a href="terms_of_service.html">Terms of Service</a>
+        </div></div>
+    </div>
+</div>
 
         <div class="foot-pay">
             <p>We accept</p>
@@ -3872,8 +3918,17 @@ body.modal-open { overflow: hidden; }
     <div class="chatbot-window" id="chatbotWindow">
 <div class="chatbot-header">
     <div class="chatbot-header-info">
+        <div class="chatbot-avatar">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M12 12L3 7.5" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M12 12V21" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M12 12L21 7.5" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+            <i class="chatbot-online" aria-hidden="true"></i>
+        </div>
         <div>
-            <div class="chatbot-title">Chat with us</div>
+            <div class="chatbot-title">Diamondback Coding</div>
             <div class="chatbot-status">We're here to help!</div>
         </div>
     </div>
@@ -3937,6 +3992,8 @@ body.modal-open { overflow: hidden; }
                 </svg>
             </button>
         </div>
+
+        <p class="chatbot-note">We typically reply instantly</p>
     </div>
 </div>
 
@@ -4525,7 +4582,13 @@ function toggleChatbot() {
     
     toggle.classList.toggle('active');
     windowEl.classList.toggle('active');
-    
+
+    // Full-screen sheet on mobile: lock the page behind it.
+    if (window.matchMedia('(max-width: 999px)').matches) {
+        document.documentElement.style.overflow =
+            windowEl.classList.contains('active') ? 'hidden' : '';
+    }
+
     if (toggle.classList.contains('active') && badge) {
         badge.style.display = 'none';
     }
@@ -5140,6 +5203,398 @@ document.addEventListener('keydown', function(e) {
 </script>
 
 
+<style id="db-mobile">
+/* ==========================================================================
+   MOBILE LAYER — rebuilt section by section against the reference recording.
+   Everything here is scoped to < 1000px; desktop is untouched.
+   ========================================================================== */
+@media (max-width: 999px) {
+
+  :root { --gut: 22px; --sec-y: 66px; --nav-h: 64px; }
+
+  /* ---- Buttons: square, uppercase, letterspaced -------------------------- */
+  .btn { border-radius: 2px; min-height: 52px; padding: 0 26px; font-size: 12px; letter-spacing: 2px; }
+  .btn__arrow { display: none; }
+
+  /* ---- Nav --------------------------------------------------------------- */
+  .nav-container { padding: 0 18px 0 var(--gut); gap: 12px; }
+  .nav-logo { font-size: 11px; letter-spacing: 1.5px; gap: 8px; align-items: center; max-width: 150px; white-space: normal; line-height: 1.28; }
+  .nav-logo svg { width: 21px; height: 21px; flex-shrink: 0; }
+  .nav-right { gap: 15px; }
+  .nav-cta { border-radius: 2px; padding: 14px 18px; font-size: 10.5px; letter-spacing: 1.6px; font-weight: 800; }
+  .mobile-menu-btn { width: 30px; height: 26px; border: 0; border-radius: 0; gap: 6px; }
+  .mobile-menu-btn span { width: 23px; height: 2px; }
+  .mobile-menu-btn.active span:nth-child(1) { transform: translateY(8px) rotate(45deg); }
+  .mobile-menu-btn.active span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+
+  /* ---- Hero: solid black, centred, two stacked buttons -------------------- */
+  .hero-bg, .hero-prism { display: none; }
+  .hero { background: #000; }
+  .hero-inner { padding: 66px var(--gut) 78px; }
+  .hero-text { text-align: center; display: flex; flex-direction: column; align-items: center; }
+  .hero .eyebrow { align-self: center; }
+  .hero-h1 { font-size: clamp(31px, 8.6vw, 40px) !important; line-height: 1.06 !important; margin-bottom: 26px; }
+  .hero-accent { display: none; }
+  .hero .lede { font-size: 17px; line-height: 1.5; color: rgba(255,255,255,0.78); margin: 0 auto 36px; max-width: 30ch; }
+  .hero-cta { width: 100%; align-items: center; gap: 12px; }
+  .hero-cta .btn { width: auto; padding: 0 34px; }
+  .hero-cta .btn--ghost { border-color: var(--gold); }
+  .hero .proof, .hero-media { display: none; }
+
+  /* ---- Logo band --------------------------------------------------------- */
+  .logos { padding: 34px 0; }
+  .logo-slot { width: 155px; height: 34px; }
+  .logo-set { gap: 46px; padding-right: 46px; }
+
+  /* ---- Showcase: visual first, then heading, then accordion --------------- */
+  section:has(> .wrap > .show-body) > .wrap { display: flex; flex-direction: column; }
+  .show-body { display: contents; }
+  .show-visual { order: 1; }
+  section:has(> .wrap > .show-body) .show-head { order: 2; margin: 30px 0 0; }
+  .show-acc { order: 3; margin-top: 28px; }
+
+  .show-visual {
+    padding: 0;
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 0;
+    aspect-ratio: 1 / 1.04;
+    box-shadow: none;
+  }
+  .show-visual img { width: 100%; height: 100%; object-fit: cover; border-radius: 0; }
+
+  .show-head .h-lg { font-size: clamp(29px, 7.6vw, 35px); font-weight: 600; line-height: 1.1; }
+  .show-head .lede { font-size: 17px; line-height: 1.5; margin-top: 14px; }
+
+  .acc-item { border-left-width: 1px; padding-left: 20px; }
+  .acc-btn { font-size: 21px; padding: 15px 0; gap: 12px; justify-content: flex-start; letter-spacing: -0.02em; }
+  .acc-btn svg { width: 16px; height: 16px; stroke-width: 2; }
+  .acc-panel-in { font-size: 16.5px; padding-bottom: 22px; }
+  .acc-panel-in .link-explore { display: flex; width: fit-content; }
+  .link-explore { font-size: 12px; letter-spacing: 2px; margin-top: 22px; color: var(--ink); }
+  .band--ink .link-explore { color: #fff; }
+  .link-explore i { width: 30px; height: 30px; opacity: 1; border-color: transparent; background: rgba(0,0,0,0.07); }
+  .link-explore i svg { width: 13px; height: 13px; }
+  .band--ink .link-explore i { background: rgba(255,255,255,0.14); }
+
+  /* ---- Client story ------------------------------------------------------ */
+  .stories-stage { aspect-ratio: 1 / 1.3; }
+  .stories-name { left: var(--gut); right: var(--gut); bottom: 188px; max-width: none; }
+  .stories-name strong { font-size: 27px; }
+  .stories-name span { font-size: 15px; }
+  .stories-arrows { left: var(--gut); right: var(--gut); bottom: 124px; justify-content: space-between; }
+  .stories-arrows button { width: 42px; height: 42px; }
+  .stories-thumbs { padding: 12px; }
+
+  /* ---- Testimonials ------------------------------------------------------ */
+  .testi-title { max-width: 16ch; font-size: clamp(30px, 8vw, 38px); font-weight: 600; margin-bottom: 30px; }
+  .testi-rail { padding-left: var(--gut); }
+  .tcard { width: 60vw; max-width: 262px; border-radius: 6px; aspect-ratio: 3 / 3.55; }
+  .testi-set { gap: 12px; padding-right: 12px; }
+  .testi-foot { flex-direction: column; align-items: flex-start; gap: 26px; margin-top: 30px; }
+  .testi-arrows { gap: 28px; }
+  .testi-arrows button { width: auto; height: auto; border: 0; border-radius: 0; }
+  .testi-arrows button:hover { background: none; }
+  .testi-arrows svg { width: 30px; height: 22px; stroke-width: 1.4; }
+  .testi-foot .btn { width: auto; padding: 0 34px; }
+
+  /* ---- Stats: number on its own line, hairline between rows -------------- */
+  .stats-inner { display: block; }
+  .stats .h-md { font-size: clamp(29px, 7.6vw, 36px); font-weight: 600; margin-bottom: 34px; }
+  .stat-row { display: block; padding: 30px 0; }
+  .stat-row:first-child { padding-top: 0; }
+  .stat-row b { display: block; font-size: clamp(42px, 12vw, 54px); font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
+  .stat-row span { display: block; margin-top: 13px; font-size: 16.5px; line-height: 1.4; color: rgba(255,255,255,0.92); }
+
+  /* ---- Article cards: snap rail + arrows + progress ---------------------- */
+  .cards {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: var(--gut);
+    margin: 0 calc(var(--gut) * -1);
+    padding: 0 var(--gut) 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cards::-webkit-scrollbar { display: none; }
+  .case { flex: 0 0 78%; scroll-snap-align: start; border-radius: 14px; }
+  .case-media { height: 210px; }
+  .case-body { padding: 20px 20px 26px; }
+  .case-body h3 { font-size: 20px; }
+
+  .cards-foot { display: flex; align-items: center; gap: 20px; margin-top: 28px; }
+  .cards-arrows { display: flex; gap: 12px; }
+  .cards-arrows button {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    border: 1px solid var(--line-l);
+    display: grid; place-items: center;
+    color: var(--ink);
+  }
+  .cards-arrows button[disabled] { opacity: 0.35; }
+  .cards-arrows svg { width: 17px; height: 17px; }
+  .cards-progress { flex: 1; max-width: 150px; height: 2px; background: var(--line-l); position: relative; overflow: hidden; }
+  .cards-progress i { position: absolute; top: 0; bottom: 0; left: 0; width: 25%; background: var(--ink); transition: transform 0.3s var(--ease); }
+  .cards-cta { display: inline-flex; margin-top: 28px; width: auto; padding: 0 34px; align-self: flex-start; }
+
+  /* ---- Trusted + awards -------------------------------------------------- */
+  .trust-card { padding: 34px 24px 40px; border-radius: 16px; }
+  .trust-cards .trust-card:first-child { text-align: center; }
+  .trust-card .h-md { font-size: clamp(27px, 7.2vw, 33px); font-weight: 600; }
+  .trusted-proof { flex-direction: column; align-items: center; justify-content: center; gap: 12px; margin-top: 24px; }
+  .trusted-proof .proof-stars svg { width: 22px; height: 22px; }
+  .trusted-proof p { font-size: 15.5px; }
+  .stack-grid { gap: 26px 20px; }
+
+  /* ---- Closing CTA: frosted panel over the photo ------------------------- */
+  .cta-band { padding: 96px 0 132px; }
+  .cta-panel {
+    background: rgba(196,190,182,0.26);
+    -webkit-backdrop-filter: blur(26px) saturate(115%);
+    backdrop-filter: blur(26px) saturate(115%);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 18px;
+    color: #fff;
+    text-align: center;
+    padding: 54px 26px 48px;
+    max-width: 330px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .cta-panel h2 { color: #fff; font-size: clamp(28px, 7.6vw, 34px); font-weight: 600; margin-bottom: 34px; }
+  .cta-panel .h-dim { color: rgba(255,255,255,0.74); }
+  .cta-panel .btn { width: auto; padding: 0 30px; }
+
+  /* ---- Footer ------------------------------------------------------------ */
+  footer { padding-bottom: 46px; }
+  .foot-top { align-items: center; text-align: center; gap: 22px; padding: 8px 0 26px; }
+  .foot-phone { font-size: 26px; }
+  .foot-demo-btn {
+    align-self: center;
+    border-radius: 2px;
+    min-height: 56px;
+    padding: 0 40px;
+    border-color: rgba(255,255,255,0.45);
+    color: #fff;
+    letter-spacing: 2.2px;
+  }
+  .foot-cols { display: block; padding: 16px 0 30px; }
+  .foot-col { border-bottom: 1px solid rgba(255,255,255,0.13); }
+  .foot-col:last-child { border-bottom: 0; }
+  .foot-col-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 26px 0; text-align: left; }
+  .foot-col-btn h4 { margin: 0; font-size: 14px; letter-spacing: 1.7px; }
+  .fc-chev { display: grid; place-items: center; color: var(--gold); transition: transform 0.28s var(--ease); }
+  .fc-chev svg { width: 22px; height: 22px; stroke-width: 2; }
+  .foot-col.open .fc-chev { transform: rotate(180deg); }
+  .foot-col-links { max-height: 0; overflow: hidden; transition: max-height 0.34s var(--ease); }
+  .foot-col.open .foot-col-links { max-height: 560px; }
+  .foot-col-links-in { padding-bottom: 22px; }
+  .foot-cols a { font-size: 15px; line-height: 2.25; }
+  .foot-pay { justify-content: center; padding: 6px 0 30px; }
+  .foot-bottom { gap: 26px; padding: 10px 0 0; }
+  .foot-legal { order: 0; gap: 26px; font-size: 14px; }
+  .foot-social { order: 1; gap: 14px; }
+  .foot-mark { order: 2; }
+  .foot-mark svg { width: 30px; height: 30px; }
+  .foot-bottom > p { order: 3; font-size: 13.5px; line-height: 1.5; max-width: 34ch; }
+
+  /* ---- Drawer: full-screen dark accordion -------------------------------- */
+  .drawer { background: var(--surface); color: #fff; }
+  .drawer-head { background: var(--surface); border-radius: 0; padding: var(--ann-h) 18px 0 var(--gut); }
+  .drawer-head-top { min-height: var(--nav-h); }
+  .drawer-brand {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; color: #fff;
+  }
+  .drawer-brand svg { width: 21px; height: 21px; }
+  .drawer-head-right { display: flex; align-items: center; gap: 15px; }
+  .drawer-cta {
+    background: var(--gold); color: var(--ink);
+    border-radius: 2px; padding: 14px 18px;
+    font-size: 10.5px; font-weight: 800; letter-spacing: 1.6px;
+    text-transform: uppercase; white-space: nowrap;
+  }
+  .drawer-close { width: 30px; height: 30px; border: 0; border-radius: 0; color: #fff; }
+  .drawer-close svg { width: 23px; height: 23px; }
+
+  .drawer-nav { padding: 6px var(--gut) 0; }
+  .drawer-nav > li { border-bottom: 1px solid rgba(255,255,255,0.13); }
+  .drawer-nav > li:last-child { border-bottom: 0; }
+  .drawer-nav > li > a,
+  .drawer-nav > li > button {
+    padding: 24px 0;
+    min-height: 0;
+    font-size: 14.5px;
+    font-weight: 700;
+    letter-spacing: 1.7px;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .drawer-nav > li.open > button { color: var(--gold); }
+  .drawer-nav .rc { width: auto; height: auto; border: 0; border-radius: 0; color: var(--gold); }
+  .drawer-nav .rc svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2; }
+  .drawer-nav li.open .rc { background: none; }
+
+  .drawer-sub { max-height: 0; overflow: hidden; background: none; transition: max-height 0.4s var(--ease); }
+  .drawer-nav li.open .drawer-sub { max-height: 1600px; }
+  .drawer-sub-in { padding-bottom: 24px; }
+  .drawer-group {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--gold);
+    margin: 20px 0 16px;
+  }
+  .drawer-sub a { display: block; padding: 0 0 20px; color: #fff; font-size: inherit; }
+  .drawer-sub a strong { display: block; font-size: 19px; font-weight: 400; letter-spacing: -0.01em; color: #fff; }
+  .drawer-sub a small { display: block; margin-top: 4px; font-size: 14.5px; color: rgba(255,255,255,0.48); }
+
+  .drawer-foot { padding: 34px var(--gut) 42px; gap: 18px; align-items: flex-start; }
+  .drawer-legal { display: flex; flex-wrap: wrap; gap: 20px; font-size: 13px; color: rgba(255,255,255,0.5); }
+  .drawer-call { font-size: 20px; font-weight: 700; color: #fff; }
+
+  /* ---- Floating widgets: bubble only, like the reference ------------------ */
+  .actionbar, .to-top, .chatbot-bubble, .chatbot-badge { display: none !important; }
+  .chatbot-container { right: 18px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+  .chatbot-toggle { width: 60px; height: 60px; background: #131c26 !important; }
+  .chatbot-toggle svg { stroke: #fff !important; }
+  .chatbot-toggle.active { display: none !important; }
+
+  /* ---- Chat panel: full-screen sheet -------------------------------------- */
+  .chatbot-window {
+    position: fixed;
+    inset: 0;
+    right: 0; bottom: 0;
+    width: 100%;
+    max-height: none;
+    border-radius: 0;
+    box-shadow: none;
+    transform: translateY(14px);
+    z-index: 9999;
+  }
+  .chatbot-window.active { transform: none; }
+
+  .chatbot-header {
+    gap: 14px;
+    padding: 12px 12px 12px 20px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+    background: #131c26;
+    flex-shrink: 0;
+  }
+  .chatbot-avatar {
+    position: relative;
+    width: 46px; height: 46px;
+    background: #131c26;
+    border: 2px solid #fff;
+    color: #fff;
+  }
+  .chatbot-avatar svg { width: 22px; height: 22px; stroke: #fff; }
+  .chatbot-online {
+    position: absolute;
+    right: -1px; bottom: -1px;
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: #1fbf8f;
+    border: 2px solid #131c26;
+  }
+  .chatbot-title { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+  .chatbot-status { display: none; }
+  .chatbot-close {
+    width: 58px; height: 58px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.07);
+    color: #fff;
+  }
+  .chatbot-close svg { width: 26px; height: 26px; stroke-width: 1.6; }
+
+  .chatbot-messages { padding: 22px 20px; background: #fff; }
+  .chatbot-messages .message { gap: 12px; margin-bottom: 12px; }
+  .chatbot-messages .message-avatar { width: 44px; height: 44px; background: #131c26; color: #fff; }
+  .chatbot-messages .message-avatar svg { width: 19px; height: 19px; stroke: #fff; }
+  .chatbot-messages .message-content {
+    background: #f7f3f2;
+    border: 0;
+    border-radius: 10px;
+    padding: 15px 18px;
+  }
+  .chatbot-messages .message-content p { font-size: 16.5px; line-height: 1.45; color: #14212b; }
+  .chatbot-messages .message-time { display: none; }
+  .chatbot-messages .user-message .message-avatar { background: #131c26; }
+  .chatbot-messages .user-message .message-content { background: #131c26; border-radius: 10px; }
+
+  /* Quick replies sit in the thread, lined up under the bubble */
+  /* Replies sit in the thread under the last bubble, not pinned to the input */
+  .chatbot-messages { flex: 0 1 auto; }
+  .chatbot-quick-actions {
+    flex: 1 1 auto;
+    align-content: flex-start;
+    gap: 10px;
+    padding: 2px 20px 20px 76px;
+    background: #fff;
+    border-top: 0;
+  }
+  .quick-action-btn {
+    gap: 0;
+    padding: 11px 18px;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 15.5px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #14212b;
+  }
+  .quick-action-btn svg { display: none; }
+
+  .chatbot-input-container {
+    gap: 0;
+    padding: 10px 20px 4px;
+    border-top: 0;
+    align-items: center;
+    position: relative;
+  }
+  .chatbot-input {
+    height: 58px;
+    padding: 0 58px 0 24px;
+    font-size: 16px;
+    border-color: #cfcfcf;
+    background: #fff;
+  }
+  .chatbot-send {
+    position: absolute;
+    right: 30px;
+    width: 34px; height: 34px;
+    background: none;
+    border-radius: 0;
+  }
+  .chatbot-send:hover { background: none; }
+  .chatbot-send svg { width: 24px; height: 24px; stroke: #8a8a8a; stroke-width: 1.5; fill: none; }
+  .chatbot-note {
+    flex-shrink: 0;
+    padding: 4px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+    background: #fff;
+    text-align: center;
+    font-size: 14px;
+    color: #7b7b7b;
+  }
+}
+
+/* Carousel controls are mobile-only. */
+@media (min-width: 1000px) {
+  .cards-foot, .cards-cta { display: none; }
+  .chatbot-note { display: none; }
+  .chatbot-avatar { position: relative; }
+  .chatbot-online {
+    position: absolute; right: -1px; bottom: -1px;
+    width: 11px; height: 11px; border-radius: 50%;
+    background: #1fbf8f; border: 2px solid var(--ink);
+  }
+}
+</style>
+
 <script id="db-page-js">
 /* Page interactions — nav drawer, accordions, action bar */
 (function () {
@@ -5186,6 +5641,47 @@ document.addEventListener('keydown', function(e) {
       if (!wasOpen) li.classList.add('open');
     });
   });
+
+  /* ---- Footer column accordions (mobile only) ---- */
+  document.querySelectorAll('.foot-col-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (window.matchMedia('(min-width: 1000px)').matches) return;
+      var col = b.parentElement;
+      var wasOpen = col.classList.contains('open');
+      document.querySelectorAll('.foot-col.open').forEach(function (o) { o.classList.remove('open'); });
+      if (!wasOpen) col.classList.add('open');
+    });
+  });
+
+  /* ---- Article card rail: arrows + progress (mobile only) ---- */
+  (function () {
+    var rail = document.querySelector('.cards');
+    var foot = document.querySelector('.cards-foot');
+    if (!rail || !foot) return;
+    var prev = foot.querySelector('[data-cards="prev"]');
+    var next = foot.querySelector('[data-cards="next"]');
+    var fill = foot.querySelector('.cards-progress i');
+    var count = rail.children.length;
+
+    function step() {
+      var first = rail.children[0];
+      if (!first) return rail.clientWidth;
+      return first.getBoundingClientRect().width + 12;
+    }
+    function sync() {
+      var max = rail.scrollWidth - rail.clientWidth;
+      var ratio = max > 0 ? rail.scrollLeft / max : 0;
+      if (fill) fill.style.transform = 'translateX(' + (ratio * (100 * (count - 1))) + '%)';
+      prev.disabled = rail.scrollLeft <= 2;
+      next.disabled = rail.scrollLeft >= max - 2;
+    }
+    if (fill && count > 1) fill.style.width = (100 / count) + '%';
+    prev.addEventListener('click', function () { rail.scrollBy({ left: -step(), behavior: 'smooth' }); });
+    next.addEventListener('click', function () { rail.scrollBy({ left: step(), behavior: 'smooth' }); });
+    rail.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync);
+    sync();
+  })();
 
   /* ---- Section accordions ---- */
   document.querySelectorAll('[data-accordion]').forEach(function (group) {

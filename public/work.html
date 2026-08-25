@@ -11,11 +11,11 @@
     <meta name="google-site-verification" content="zanVD9vMpB-Xu_0jS-eLsrE-J2F44grCN75jGW2hq40" />
     
     <!-- Primary Meta Tags -->
-<title>Our Work | Photography Website Case Studies | Dallas &amp; Austin, TX | Diamondback Coding</title>
+<title>Our Work | Photography Website Case Studies | Dallas &amp; Austin, TX | Reserve Legacy</title>
 <meta name="title" content="Photography Website Case Studies | Dallas &amp; Austin, TX">
 <meta name="description" content="Recent work for photography studios in Dallas, TX, Austin, TX and nationwide: what we changed, and what it did for their enquiries, bookings and print revenue.">
     <meta name="keywords" content="photography website case studies, photographer SEO case study Dallas, photographer SEO case study Austin, photography website results, wedding photographer marketing results, photography studio booking growth, print store revenue case study, photographer lead response results, photography website redesign results Texas">
-    <meta name="author" content="Diamondback Coding">
+    <meta name="author" content="Reserve Legacy">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://diamondbackcoding.com/work.html">
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml">
@@ -30,10 +30,10 @@
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Diamondback Coding - Photography Website Design">
+    <meta property="og:image:alt" content="Reserve Legacy - Photography Website Design">
     <meta property="og:locale" content="en_US">
-    <meta property="og:site_name" content="Diamondback Coding">
-    <meta property="article:author" content="Diamondback Coding">
+    <meta property="og:site_name" content="Reserve Legacy">
+    <meta property="article:author" content="Reserve Legacy">
     <meta property="article:publisher" content="https://diamondbackcoding.com">
     
     <!-- Twitter -->
@@ -42,7 +42,7 @@
     <meta property="twitter:title" content="Photography Website Design &amp; Development | Dallas &amp; Austin, TX">
     <meta property="twitter:description" content="Portfolio sites, fast galleries and enquiry capture for photographers in Dallas, Austin and nationwide.">
     <meta property="twitter:image" content="https://diamondbackcoding.com/logo-512x512.png">
-    <meta property="twitter:image:alt" content="Diamondback Coding - Photography Website Design">
+    <meta property="twitter:image:alt" content="Reserve Legacy - Photography Website Design">
     <meta name="twitter:site" content="@diamondbackcoding">
     <meta name="twitter:creator" content="@diamondbackcoding">
     <meta name="twitter:domain" content="diamondbackcoding.com">
@@ -68,7 +68,7 @@
     <!-- Mobile App Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Diamondback Coding">
+    <meta name="apple-mobile-web-app-title" content="Reserve Legacy">
     
     <!-- Favicon -->
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -86,7 +86,7 @@
     {
       "@type": "ProfessionalService",
       "@id": "https://diamondbackcoding.com/#organization",
-      "name": "Diamondback Coding",
+      "name": "Reserve Legacy",
       "description": "Websites, SEO, digital marketing and CRM built for photographers in Dallas TX, Austin TX and across the United States",
       "url": "https://diamondbackcoding.com",
       "telephone": "+19402178680",
@@ -170,7 +170,7 @@ window.addEventListener('load', function() {
     {
       "@context": "https://schema.org",
       "@type": "Organization",
-      "name": "Diamondback Coding",
+      "name": "Reserve Legacy",
       "url": "https://diamondbackcoding.com",
       "logo": "https://diamondbackcoding.com/Greentechcubelogodesign.png",
       "description": "Web development and marketing agency providing photography website design, client galleries, CRM and SEO for photographers in Dallas TX, Austin TX and nationwide",
@@ -195,7 +195,7 @@ window.addEventListener('load', function() {
 
 <style id="db-system">
 /* ==========================================================================
-   DIAMONDBACK CODING — DESIGN SYSTEM (full rebuild)
+   RESERVE LEGACY — DESIGN SYSTEM (full rebuild)
    Mobile-first. Breakpoints: 700px (tablet), 1000px (desktop), 1500px (wide).
    ========================================================================== */
 
@@ -3188,10 +3188,26 @@ body.modal-open .to-top { display: none !important; }
   background: var(--ink-2);
   box-shadow: 0 20px 56px rgba(5, 5, 6, 0.18);
 }
-/* Drop a screenshot into shots/<name>.jpg and it takes over this slot. Until
-   that file exists the onerror handler removes the img and the placeholder
-   chrome below shows instead, so the page never renders a broken image. */
-.pf-img { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Drop a screenshot into shots/<slug>.<ext> and it takes over this slot. Any
+   of jpg / jpeg / png / webp / avif works - the loader tries each in turn and,
+   if none exist, removes the img so the placeholder chrome below shows and the
+   page never renders a broken image.
+
+   object-fit: cover fills the frame with no stretching or letterboxing, and
+   object-position pins the TOP of the shot, because a website screenshot has
+   its logo and hero at the top - centre-cropping throws exactly that away.
+   For a full-page capture you want to show whole, add data-fit="contain". */
+.pf-img {
+  position: absolute; inset: 0; z-index: 3;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+  display: block;
+  background: #0e0d0c;
+}
+.pf-img[data-fit="contain"] { object-fit: contain; }
+.pf-img[data-fit="center"]  { object-position: 50% 50%; }
+.pf-img[data-fit="bottom"]  { object-position: 50% 100%; }
 .pf-mock {
   position: absolute; inset: 0;
   background:
@@ -3239,11 +3255,237 @@ body.modal-open .to-top { display: none !important; }
   padding: 5px 11px;
 }
 </style>
+
+<style id="rl-brand">
+/* ==========================================================================
+   RESERVE LEGACY - brand mark
+   The mark is near-white hairline script on transparent: correct on dark
+   surfaces, invisible on light ones, so it is knocked to solid ink with
+   brightness(0) where needed (keeps the alpha, flattens the art to black).
+   Sized by HEIGHT with width:auto - the art is 0.75:1, so a square box with
+   object-fit:contain letterboxed it and threw away a third of the space.
+   The script tails also run past the dense part of the monogram, so the box
+   has to be generous for the letters to read.
+   ========================================================================== */
+.nav-logo-mark { height: 46px; width: auto; object-fit: contain; flex-shrink: 0; }
+@media (min-width: 1000px) { .nav-logo-mark { height: 60px; } }
+
+/* The wordmark beside it was 11.5px, which is why the brand read as tiny. */
+.nav-logo { font-size: 13px; letter-spacing: 1.5px; gap: 12px; }
+@media (min-width: 1000px) { .nav-logo { font-size: 15.5px; letter-spacing: 1.7px; gap: 14px; } }
+
+nav.nav--light .nav-logo-mark { filter: brightness(0); transition: filter 0.25s var(--ease); }
+nav.nav--light:has(.nav-links > li.has-mega:hover) .nav-logo-mark,
+nav.nav--light:has(.nav-links > li.has-mega:focus-within) .nav-logo-mark,
+nav.nav--light.mega-open .nav-logo-mark,
+nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
+
+.drawer-brand-mark { height: 54px; width: auto; object-fit: contain; flex-shrink: 0; }
+.drawer-brand { font-size: 15px; letter-spacing: 1.5px; gap: 13px; }
+
+/* The chip sits on ink, so the white mark is already correct there. */
+.pchip-mark { height: 30px; width: auto; object-fit: contain; flex-shrink: 0; }
+.pchip { padding: 8px 18px 8px 11px; gap: 11px; }
+
+/* Footer sits on the dark surface - white mark is correct as-is. */
+.foot-mark img { height: 46px; width: auto; object-fit: contain; display: block; opacity: 0.75; }
+
+/* Both chat marks sit inside a gold tile, so they get knocked to ink. */
+.chatbot-bubble-logo img, .chatbot-avatar img {
+  height: 84%; width: auto;
+  object-fit: contain;
+  filter: brightness(0);
+}
+</style>
+
+<style id="rl-wide">
+/* ==========================================================================
+   LARGE MONITORS
+   The layout stopped scaling at the 1000px breakpoint: --max was pinned to
+   1400px and every heading clamp hit its cap around there, so anything wider
+   than ~1600px rendered a narrow column of small type in a sea of margin.
+   These tiers widen the container and lift the clamp ceilings in step.
+   ========================================================================== */
+@media (min-width: 1600px) {
+  :root { --max: 1560px; --gut: 72px; --sec-y: 132px; --nav-h: 88px; --ann-h: 44px; }
+  .h-xl { font-size: 82px; }
+  .h-lg { font-size: 58px; }
+  .h-md { font-size: 42px; }
+  .lede { font-size: 20px; }
+  .stat-row b { font-size: 76px; }
+  .phero h1, .pf-hero h1 { font-size: 64px; }
+  .pmid h2, .pjoin h2 { font-size: 58px; }
+  .pfeat-text h2 { font-size: 48px; }
+  .pf-copy h2, .pfaq h2, .jobs-head h2 { font-size: 46px; }
+  .cta-panel h2 { font-size: 40px; }
+  .testi-title { font-size: 44px; }
+  .nav-logo-mark { height: 70px; }
+  .nav-logo { font-size: 17px; }
+}
+
+@media (min-width: 1920px) {
+  :root { --max: 1780px; --gut: 90px; --sec-y: 150px; --nav-h: 96px; --ann-h: 46px; }
+  body { font-size: 17px; }
+  .h-xl { font-size: 92px; }
+  .h-lg { font-size: 64px; }
+  .h-md { font-size: 46px; }
+  .lede { font-size: 21px; }
+  .stat-row b { font-size: 86px; }
+  .phero h1, .pf-hero h1 { font-size: 72px; }
+  .pmid h2, .pjoin h2 { font-size: 64px; }
+  .pfeat-text h2 { font-size: 53px; }
+  .pf-copy h2, .pfaq h2, .jobs-head h2 { font-size: 50px; }
+  .cta-panel h2 { font-size: 44px; }
+  .testi-title { font-size: 48px; }
+  .pquote p { font-size: 20px; }
+  .pfeat-text p { font-size: 19px; }
+  /* Cards were sized against a 1400px container — let more of them show. */
+  .pquote { flex-basis: 26%; }
+  .tcard { width: 300px; }
+  .nav-logo-mark { height: 76px; }
+  .nav-logo { font-size: 18px; }
+}
+
+@media (min-width: 2400px) {
+  :root { --max: 2080px; --gut: 110px; --sec-y: 172px; --nav-h: 108px; --ann-h: 50px; }
+  body { font-size: 18px; }
+  .h-xl { font-size: 104px; }
+  .h-lg { font-size: 72px; }
+  .h-md { font-size: 52px; }
+  .lede { font-size: 23px; }
+  .stat-row b { font-size: 98px; }
+  .phero h1, .pf-hero h1 { font-size: 82px; }
+  .pmid h2, .pjoin h2 { font-size: 72px; }
+  .pfeat-text h2 { font-size: 60px; }
+  .pf-copy h2, .pfaq h2, .jobs-head h2 { font-size: 56px; }
+  .cta-panel h2 { font-size: 50px; }
+  .testi-title { font-size: 54px; }
+  .pquote p { font-size: 22px; }
+  .pquote { flex-basis: 23%; }
+  .tcard { width: 340px; }
+  .nav-logo-mark { height: 84px; }
+  .nav-logo { font-size: 19px; }
+}
+</style>
+
+<style id="rl-chat">
+/* ==========================================================================
+   CHAT WIDGET - one design, desktop and mobile
+   Desktop was gold-on-ink with pill quick-replies and tailed bubbles; mobile
+   was navy #131c26 with a ringed avatar, soft square bubbles and outlined
+   replies. These rules bring the desktop panel onto the mobile design. They
+   apply at every width; the existing max-width:999px block still turns the
+   panel into a full-screen sheet on phones, which is the only real
+   difference that should remain.
+   ========================================================================== */
+@media (min-width: 1000px) {
+  /* --- Launcher: same navy circle and white glyph as mobile --------------- */
+  .chatbot-toggle {
+    width: 62px; height: 62px;
+    background: #131c26 !important;
+    color: #fff !important;
+    box-shadow: 0 16px 36px rgba(19, 28, 38, 0.34) !important;
+  }
+  .chatbot-toggle svg { stroke: #fff !important; }
+
+  /* --- Teaser bubble ----------------------------------------------------- */
+  .chatbot-bubble { border-radius: 12px; }
+  .chatbot-bubble-logo {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: #131c26;
+    border: 2px solid #fff;
+  }
+  .chatbot-bubble-logo img { filter: brightness(0) invert(1); }
+  .chatbot-bubble-close { background: #131c26; }
+
+  /* --- Panel ------------------------------------------------------------- */
+  .chatbot-window { width: 400px; border-radius: 14px; }
+  .chatbot-header { background: #131c26; padding: 14px 14px 14px 18px; gap: 14px; }
+  .chatbot-avatar {
+    position: relative;
+    width: 44px; height: 44px;
+    background: #131c26;
+    border: 2px solid #fff;
+    color: #fff;
+  }
+  .chatbot-avatar img { filter: brightness(0) invert(1); }
+  .chatbot-online {
+    position: absolute;
+    right: -1px; bottom: -1px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #1fbf8f;
+    border: 2px solid #131c26;
+  }
+  .chatbot-title { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .chatbot-status { display: none; }
+  .chatbot-close {
+    width: 44px; height: 44px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.07);
+    color: #fff;
+  }
+  .chatbot-close:hover { background: rgba(255, 255, 255, 0.16); }
+  .chatbot-close svg { width: 22px; height: 22px; stroke-width: 1.6; }
+
+  /* --- Thread ------------------------------------------------------------ */
+  .chatbot-messages { padding: 20px 18px; background: #fff; }
+  .chatbot-messages .message { gap: 11px; margin-bottom: 12px; }
+  .chatbot-messages .message-avatar { width: 38px; height: 38px; background: #131c26; color: #fff; }
+  .chatbot-messages .message-avatar svg { width: 17px; height: 17px; stroke: #fff; }
+  .chatbot-messages .message-content {
+    background: #f7f3f2;
+    border: 0;
+    border-radius: 10px;
+    padding: 13px 16px;
+  }
+  .chatbot-messages .message-content p { font-size: 14.5px; line-height: 1.45; color: #14212b; }
+  .chatbot-messages .message-time { display: none; }
+  .chatbot-messages .user-message .message-avatar { background: #131c26; }
+  .chatbot-messages .user-message .message-content { background: #131c26; border-radius: 10px; }
+
+  /* --- Quick replies: squared outlines, in the thread --------------------- */
+  .chatbot-quick-actions {
+    gap: 9px;
+    padding: 2px 18px 16px 67px;
+    background: #fff;
+    border-top: 0;
+  }
+  .quick-action-btn {
+    gap: 0;
+    padding: 10px 16px;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #14212b;
+  }
+  .quick-action-btn:hover { background: #f7f3f2; border-color: #131c26; }
+  .quick-action-btn svg { display: none; }
+
+  /* --- Composer ---------------------------------------------------------- */
+  .chatbot-input-container { gap: 0; padding: 8px 18px 4px; border-top: 0; align-items: center; position: relative; }
+  .chatbot-input { height: 52px; padding: 0 54px 0 20px; font-size: 15px; border-color: #cfcfcf; background: #fff; }
+  .chatbot-input:focus { border-color: #131c26; }
+  .chatbot-send { position: absolute; right: 28px; width: 32px; height: 32px; background: none; border-radius: 0; }
+  .chatbot-send:hover { background: none; }
+  .chatbot-send svg { width: 22px; height: 22px; stroke: #8a8a8a; stroke-width: 1.5; fill: none; }
+  .chatbot-note { padding: 4px 18px 14px; background: #fff; text-align: center; font-size: 13px; color: #7b7b7b; }
+}
+
+/* The mark is white line art, so on the navy tiles it must NOT be knocked to
+   ink the way it is on the gold tiles - invert it back to white instead. */
+.chatbot-bubble-logo img, .chatbot-avatar img { filter: brightness(0) invert(1); }
+</style>
 </head>
 <body>
 <!-- ═══════════════ ANNOUNCEMENT ═══════════════ -->
 <div class="ann">
-    We just launched our Diamondback&reg; CRM
+    We just launched our Reserve Legacy&reg; CRM
     <a href="diamondback-crm.html">Learn more</a>
 </div>
 
@@ -3251,13 +3493,8 @@ body.modal-open .to-top { display: none !important; }
 <nav id="siteNav">
     <div class="nav-container">
         <a href="index.html" class="nav-logo">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M12 12L3 7.5" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M12 12V21" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M12 12L21 7.5" stroke="currentColor" stroke-width="1.5"/>
-            </svg>
-            Diamondback Coding
+            <img src="assets/reserve-legacy-icon.png" alt="Reserve Legacy" class="nav-logo-mark" onerror="this.onerror=null;this.src='assets/reserve-legacy-mark.png'">
+            Reserve Legacy
         </a>
 
         <ul class="nav-links">
@@ -3277,7 +3514,7 @@ body.modal-open .to-top { display: none !important; }
                         </div>
                         <div>
                             <h5>Turn enquiries into bookings</h5>
-                            <a href="diamondback-crm.html">Diamondback CRM<span>Every enquiry, booking and dollar in one place</span></a>
+                            <a href="diamondback-crm.html">Reserve Legacy CRM<span>Every enquiry, booking and dollar in one place</span></a>
                             <a href="automated-follow-up.html">Automated Follow-Up<span>Reply to every enquiry in minutes</span></a>
                             <a href="ecommerce-development.html">Custom Web Applications<span>Gallery, booking and workflow tools</span></a>
                         </div>
@@ -3346,13 +3583,8 @@ body.modal-open .to-top { display: none !important; }
     <div class="drawer-head">
         <div class="drawer-head-top">
             <a href="index.html" class="drawer-brand">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="currentColor" stroke-width="1.5"/>
-                    <path d="M12 12L3 7.5" stroke="currentColor" stroke-width="1.5"/>
-                    <path d="M12 12V21" stroke="currentColor" stroke-width="1.5"/>
-                    <path d="M12 12L21 7.5" stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-                Diamondback Coding
+                <img src="assets/reserve-legacy-icon.png" alt="Reserve Legacy" class="drawer-brand-mark" onerror="this.onerror=null;this.src='assets/reserve-legacy-mark.png'">
+                Reserve Legacy
             </a>
             <div class="drawer-head-right">
                 <button class="drawer-cta" onclick="closeDrawer(); openModal();">Get started</button>
@@ -3374,7 +3606,7 @@ body.modal-open .to-top { display: none !important; }
                     <a href="ecommerce-development.html"><strong>E-Commerce Development</strong><small>Sell prints, albums and galleries</small></a>
 
                     <p class="drawer-group">Turn enquiries into bookings</p>
-                    <a href="diamondback-crm.html"><strong>Diamondback CRM</strong><small>Every enquiry, booking and dollar in one place</small></a>
+                    <a href="diamondback-crm.html"><strong>Reserve Legacy CRM</strong><small>Every enquiry, booking and dollar in one place</small></a>
                     <a href="automated-follow-up.html"><strong>Automated Follow-Up</strong><small>Reply to every enquiry in minutes</small></a>
                     <a href="ecommerce-development.html"><strong>Custom Web Applications</strong><small>Gallery, booking and workflow tools</small></a>
 
@@ -3440,13 +3672,13 @@ body.modal-open .to-top { display: none !important; }
 
         <article class="pf-row">
             <div class="pf-copy">
-                <span class="pf-domain">BAEZMOTORSPORT.COM</span>
-                <h2>Baez Motorsport<br>Photography</h2>
-                <p>Baez Motorsport Photography had a site nobody had touched in four years and rankings to match. We rebuilt it around the track and editorial work, wired enquiry capture into the CRM and gave every gallery its own indexable page. Enquiries went up more than sixfold in the first six months, from search alone.</p>
+                <span class="pf-domain">AUSTINLENSPHOTOGRAPHY.COM</span>
+                <h2>Austin Lens<br>Photography</h2>
+                <p>Austin Lens Photography had a site nobody had touched in four years and rankings to match. We rebuilt it around the track and editorial work, wired enquiry capture into the CRM and gave every gallery its own indexable page. Enquiries went up more than sixfold in the first six months, from search alone.</p>
                 <button class="btn btn--gold" onclick="openModal()">Show more</button>
             </div>
             <div class="pf-shot">
-                <img class="pf-img" src="shots/baez.jpg" alt="Baez Motorsport Photography website" loading="lazy" onerror="this.remove()">
+                <img class="pf-img" src="shots/7376a21c-c425-463a-abe5-45da661b90e8.png" data-shot="baez" data-ext="0" alt="Baez Motorsport Photography website" loading="lazy" onerror="rlShot(this)">
                 <div class="pf-mock" style="--pf-a:#241a1a;--pf-b:#0c0a0a">
                     <div class="pf-bar">
                         <span class="pf-logo">BAEZ</span>
@@ -3454,7 +3686,7 @@ body.modal-open .to-top { display: none !important; }
                     </div>
                     <div class="pf-mid">
                         <span class="pf-kicker">Austin, Texas</span>
-                        <span class="pf-name">Baez Motorsport Photography</span>
+                        <span class="pf-name">Austin Lens Photography</span>
                     </div>
                     <div class="pf-foot"><i>See the work</i><i>Enquire</i></div>
                 </div>
@@ -3468,7 +3700,7 @@ body.modal-open .to-top { display: none !important; }
                 <button class="btn btn--gold" onclick="openModal()">Show more</button>
             </div>
             <div class="pf-shot">
-                <img class="pf-img" src="shots/jwm.jpg" alt="JWM Photography website" loading="lazy" onerror="this.remove()">
+                <img class="pf-img" src="shots/3efea664-4b27-44c6-a3a0-4167746e978a.png" data-shot="jwm" data-ext="0" alt="JWM Photography website" loading="lazy" onerror="rlShot(this)">
                 <div class="pf-mock" style="--pf-a:#2a2422;--pf-b:#0c0b0b">
                     <div class="pf-bar">
                         <span class="pf-logo">JWM</span>
@@ -3490,7 +3722,7 @@ body.modal-open .to-top { display: none !important; }
                 <button class="btn btn--gold" onclick="openModal()">Show more</button>
             </div>
             <div class="pf-shot">
-                <img class="pf-img" src="shots/constance.jpg" alt="Constance Photography website" loading="lazy" onerror="this.remove()">
+                <img class="pf-img" src="shots/52c40cf6-eaa4-4040-9e00-28ed0a56d2f1.png" data-shot="constance" data-ext="0" alt="Constance Photography website" loading="lazy" onerror="rlShot(this)">
                 <div class="pf-mock" style="--pf-a:#33241f;--pf-b:#100c0b">
                     <div class="pf-bar">
                         <span class="pf-logo">CONSTANCE</span>
@@ -3512,7 +3744,7 @@ body.modal-open .to-top { display: none !important; }
                 <button class="btn btn--gold" onclick="openModal()">Show more</button>
             </div>
             <div class="pf-shot">
-                <img class="pf-img" src="shots/rivera.jpg" alt="Rivera Wedding Photography website" loading="lazy" onerror="this.remove()">
+                <img class="pf-img" src="shots/rivera.jpg" data-shot="rivera" data-ext="0" alt="Rivera Wedding Photography website" loading="lazy" onerror="rlShot(this)">
                 <div class="pf-mock" style="--pf-a:#2f2116;--pf-b:#0d0b0a">
                     <div class="pf-bar">
                         <span class="pf-logo">RIVERA</span>
@@ -3534,7 +3766,7 @@ body.modal-open .to-top { display: none !important; }
                 <button class="btn btn--gold" onclick="openModal()">Show more</button>
             </div>
             <div class="pf-shot">
-                <img class="pf-img" src="shots/bluebonnet.jpg" alt="Bluebonnet Portrait Studio website" loading="lazy" onerror="this.remove()">
+                <img class="pf-img" src="shots/bluebonnet.jpg" data-shot="bluebonnet" data-ext="0" alt="Bluebonnet Portrait Studio website" loading="lazy" onerror="rlShot(this)">
                 <div class="pf-mock" style="--pf-a:#1d2a2e;--pf-b:#0b0f11">
                     <div class="pf-bar">
                         <span class="pf-logo">BLUEBONNET</span>
@@ -3556,7 +3788,7 @@ body.modal-open .to-top { display: none !important; }
                 <button class="btn btn--gold" onclick="openModal()">Show more</button>
             </div>
             <div class="pf-shot">
-                <img class="pf-img" src="shots/tj.jpg" alt="TJ Commercial Photography website" loading="lazy" onerror="this.remove()">
+                <img class="pf-img" src="shots/tj.jpg" data-shot="tj" data-ext="0" alt="TJ Commercial Photography website" loading="lazy" onerror="rlShot(this)">
                 <div class="pf-mock" style="--pf-a:#1a1d24;--pf-b:#0a0b0d">
                     <div class="pf-bar">
                         <span class="pf-logo">TJ</span>
@@ -3578,7 +3810,7 @@ body.modal-open .to-top { display: none !important; }
                 <button class="btn btn--gold" onclick="openModal()">Show more</button>
             </div>
             <div class="pf-shot">
-                <img class="pf-img" src="shots/whitfield.jpg" alt="Whitfield Portrait Co. website" loading="lazy" onerror="this.remove()">
+                <img class="pf-img" src="shots/whitfield.jpg" data-shot="whitfield" data-ext="0" alt="Whitfield Portrait Co. website" loading="lazy" onerror="rlShot(this)">
                 <div class="pf-mock" style="--pf-a:#2b2531;--pf-b:#0d0b0f">
                     <div class="pf-bar">
                         <span class="pf-logo">WHITFIELD</span>
@@ -3600,7 +3832,7 @@ body.modal-open .to-top { display: none !important; }
                 <button class="btn btn--gold" onclick="openModal()">Show more</button>
             </div>
             <div class="pf-shot">
-                <img class="pf-img" src="shots/cole.jpg" alt="Cole Senior Portraits website" loading="lazy" onerror="this.remove()">
+                <img class="pf-img" src="shots/cole.jpg" data-shot="cole" data-ext="0" alt="Cole Senior Portraits website" loading="lazy" onerror="rlShot(this)">
                 <div class="pf-mock" style="--pf-a:#2e2418;--pf-b:#0e0c09">
                     <div class="pf-bar">
                         <span class="pf-logo">COLE</span>
@@ -3621,7 +3853,7 @@ body.modal-open .to-top { display: none !important; }
 <section class="cta-band">
     <div class="wrap">
         <div class="cta-panel">
-            <h2 class="h-md">Grow your photography business <span class="h-dim">with Diamondback Coding</span></h2>
+            <h2 class="h-md">Grow your photography business <span class="h-dim">with Reserve Legacy</span></h2>
             <button class="btn btn--gold" onclick="openModal()">Get started now</button>
         </div>
     </div>
@@ -3644,7 +3876,7 @@ body.modal-open .to-top { display: none !important; }
         <div class="foot-col-links"><div class="foot-col-links-in">
             <a href="website-design-development.html">Photography Websites</a>
             <a href="pricing.html#development">Session Landing Pages</a>
-            <a href="diamondback-crm.html">Diamondback CRM</a>
+            <a href="diamondback-crm.html">Reserve Legacy CRM</a>
             <a href="seo-digital-marketing.html">SEO &amp; GEO</a>
             <a href="pricing.html#marketing">Paid Ads Management</a>
             <a href="ecommerce-development.html">Print &amp; Album Stores</a>
@@ -3693,15 +3925,10 @@ body.modal-open .to-top { display: none !important; }
         </div>
 
         <div class="foot-bottom">
-            <p>&copy; Copyright 2026 Diamondback Coding, Inc. &mdash; All rights reserved.</p>
+            <p>&copy; Copyright 2026 Reserve Legacy, Inc. &mdash; All rights reserved.</p>
 
             <div class="foot-mark" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none">
-                    <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="currentColor" stroke-width="1.3"/>
-                    <path d="M12 12L3 7.5" stroke="currentColor" stroke-width="1.3"/>
-                    <path d="M12 12V21" stroke="currentColor" stroke-width="1.3"/>
-                    <path d="M12 12L21 7.5" stroke="currentColor" stroke-width="1.3"/>
-                </svg>
+                <img src="assets/reserve-legacy-icon.png" alt="" onerror="this.onerror=null;this.src='assets/reserve-legacy-mark.png'">
             </div>
 
             <ul class="foot-legal">
@@ -3728,7 +3955,7 @@ body.modal-open .to-top { display: none !important; }
 
 <div class="actionbar" id="actionBar" aria-hidden="true">
     <button class="btn btn--gold" onclick="openModal()">Start a project</button>
-    <a class="actionbar-call" href="tel:+15129800393" aria-label="Call Diamondback Coding">
+    <a class="actionbar-call" href="tel:+15129800393" aria-label="Call Reserve Legacy">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
     </a>
 </div>
@@ -3787,7 +4014,7 @@ body.modal-open .to-top { display: none !important; }
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="clientStatus">Are you currently a Diamondback client?</label>
+                        <label for="clientStatus">Are you currently a Reserve Legacy client?</label>
                         <select id="clientStatus" name="clientStatus">
                             <option value="">Please select</option>
                             <option>No &mdash; new here</option>
@@ -3805,7 +4032,7 @@ body.modal-open .to-top { display: none !important; }
 
                 <button type="submit">Get started now</button>
 
-                <p class="modal-form-note">By providing Diamondback Coding with your contact information, you acknowledge and agree to our <a href="privacy_policy.html">privacy policy</a> and consent to receiving communications about your project, including calls, texts and emails.</p>
+                <p class="modal-form-note">By providing Reserve Legacy with your contact information, you acknowledge and agree to our <a href="privacy_policy.html">privacy policy</a> and consent to receiving communications about your project, including calls, texts and emails.</p>
             </form>
         </div>
     </div>
@@ -3989,12 +4216,7 @@ body.modal-open .to-top { display: none !important; }
     <div class="chatbot-bubble" id="chatbotBubble" onclick="toggleChatbot()">
         <button class="chatbot-bubble-close" id="chatbotBubbleClose" onclick="event.stopPropagation(); dismissBubble()">✕</button>
         <div class="chatbot-bubble-logo">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5">
-                <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z"/>
-                <path d="M12 12L3 7.5"/>
-                <path d="M12 12V21"/>
-                <path d="M12 12L21 7.5"/>
-            </svg>
+            <img src="assets/reserve-legacy-icon.png" alt="" onerror="this.onerror=null;this.src='assets/reserve-legacy-mark.png'">
         </div>
         <div>
             <div class="chatbot-bubble-text">Have a question?</div>
@@ -4017,16 +4239,11 @@ body.modal-open .to-top { display: none !important; }
 <div class="chatbot-header">
     <div class="chatbot-header-info">
         <div class="chatbot-avatar">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M12 3L3 7.5V16.5L12 21L21 16.5V7.5L12 3Z" stroke="currentColor" stroke-width="1.6"/>
-                <path d="M12 12L3 7.5" stroke="currentColor" stroke-width="1.6"/>
-                <path d="M12 12V21" stroke="currentColor" stroke-width="1.6"/>
-                <path d="M12 12L21 7.5" stroke="currentColor" stroke-width="1.6"/>
-            </svg>
+            <img src="assets/reserve-legacy-icon.png" alt="" onerror="this.onerror=null;this.src='assets/reserve-legacy-mark.png'">
             <i class="chatbot-online" aria-hidden="true"></i>
         </div>
         <div>
-            <div class="chatbot-title">Diamondback Coding</div>
+            <div class="chatbot-title">Reserve Legacy</div>
             <div class="chatbot-status">We're here to help!</div>
         </div>
     </div>
@@ -4916,7 +5133,7 @@ function chatReply(text, delay) {
 var quickResponses = {
     pricing:  "We scope every build, so pricing depends on what you need. As a rough guide:\nStarter portfolio sites start around $2,500\nMost photography sites land between $4,000 and $9,000\nPrint stores and gallery apps are quoted per project\n\nTell me what you are after and I can get you a real number, or call (512) 980-0393.",
     timeline: "Typical timelines from kickoff to launch:\nLanding page: 1 to 2 weeks\nPortfolio site: 4 to 8 weeks\nPrint store or gallery app: 8 weeks and up\n\nGetting your galleries and copy chosen is usually what moves the date.",
-    services: "Here is what we do:\nPhotography website design and development\nPrint, album and digital stores\nDiamondback CRM\nSEO and GEO\nPaid ads and digital marketing\nCustom web applications\n\nWhich one is closest to what you need?",
+    services: "Here is what we do:\nPhotography website design and development\nPrint, album and digital stores\nReserve Legacy CRM\nSEO and GEO\nPaid ads and digital marketing\nCustom web applications\n\nWhich one is closest to what you need?",
     contact:  "Phone: (512) 980-0393\nEmail: contact@diamondbackcoding.com\nHours: Mon to Fri, 8am to 5pm CST\n\nYou can also hit Start a project and we will come back to you the same business day."
 };
 
@@ -5323,7 +5540,7 @@ const featurePopupData = {
     },
     'crm': {
         tag: 'CRM Solution',
-        title: 'Diamondback Coding® CRM',
+        title: 'Reserve Legacy® CRM',
         desc: 'Our purpose-built CRM gives you total visibility over your leads, clients, and revenue — all in one clean dashboard. Stop losing deals to disorganization.',
         bullets: [
             'Lead pipeline & deal tracking',
@@ -6273,6 +6490,25 @@ document.addEventListener('keydown', function(e) {
   sync();
 })();
 
+</script>
+
+<!-- ═══════════════ SHOWCASE SCREENSHOTS ═══════════════ -->
+<script>
+(function () {
+  'use strict';
+  /* Each slot names a slug; we try the usual extensions in order and keep the
+     first that loads. If none do, the img is removed and the CSS placeholder
+     underneath shows through. Drop files in as you get them - no HTML edits. */
+  var EXT = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
+
+  window.rlShot = function (img) {
+    var slug = img.getAttribute('data-shot');
+    var i = parseInt(img.getAttribute('data-ext') || '0', 10) + 1;
+    if (!slug || i >= EXT.length) { img.remove(); return; }
+    img.setAttribute('data-ext', i);
+    img.src = 'shots/' + slug + '.' + EXT[i];
+  };
+})();
 </script>
 </body>
 </html>

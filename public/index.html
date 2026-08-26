@@ -1670,7 +1670,7 @@ body.modal-open { overflow: hidden; }
   box-shadow: 0 6cqw 12cqw rgba(0, 0, 0, 0.6);
 }
 .htab-screen { position: relative; overflow: hidden; border-radius: 2.1cqw; background: #17171a; }
-.htab-screen > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.htab-screen > img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; display: block; }
 
 /* ── Scene 1 · live site + domain pill + brand kit ──────────────────────── */
 .hs-site .htab { left: 3cqw; top: 18cqw; width: 76cqw; }
@@ -1757,7 +1757,16 @@ body.modal-open { overflow: hidden; }
 .sel-head i { display: block; width: 2.6cqw; height: 0.32cqw; border-radius: 2px; background: #4a4a50; }
 .sel-row { display: flex; align-items: center; gap: 2.4cqw; padding: 1.7cqw 0; }
 .sel-row + .sel-row { border-top: 1px solid #f0efec; }
-.sel-row > img { width: 11cqw; height: 8.4cqw; border-radius: 1.4cqw; object-fit: cover; flex-shrink: 0; }
+/* The mark is line art, not a photo — cover would crop it to an unreadable
+   slice, so it is contained inside a tinted tile instead. */
+.sel-row > img {
+  width: 11cqw; height: 8.4cqw;
+  border-radius: 1.4cqw;
+  object-fit: contain;
+  padding: 1.1cqw;
+  background: #f4f2ef;
+  flex-shrink: 0;
+}
 .sel-info { flex: 1; min-width: 0; }
 .sel-price { display: flex; align-items: center; gap: 1.7cqw; }
 .sel-price b { font-size: 3.6cqw; font-weight: 700; letter-spacing: -0.03em; color: #101012; }
@@ -1929,6 +1938,9 @@ body.modal-open { overflow: hidden; }
    CLIENT STORY VIDEO — full bleed, no play button
    ========================================================================== */
 .stories { background: var(--ink); }
+/* The thumb rail lives outside .stories-stage so it can drop below the image
+   on phones. On desktop this shell restores the original overlay. */
+.stories-shell { position: relative; }
 .stories-stage {
   position: relative;
   width: 100%;
@@ -3202,7 +3214,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
         <video id="heroVideo" autoplay muted loop playsinline preload="auto" webkit-playsinline>
             <source src="12817768_3840_2160_30fps.mp4" type="video/mp4">
         </video>
-        <img src="pexels-cottonbro-5082237 (1).jpg" alt="" loading="eager">
+        <img src="pexels-paduret-4049351.jpg" alt="" loading="eager">
     </div>
 
     <div class="hero-prism" aria-hidden="true"></div>
@@ -3268,7 +3280,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
                         <div class="sel-head"><strong>Selection</strong><i></i></div>
 
                         <div class="sel-row hp" style="--hd:.24s">
-                            <img src="reserve-legacy-mark.png" alt="" loading="lazy" decoding="async">
+                            <img src="assets/reserve-legacy-icon.png" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='assets/reserve-legacy-mark.png'">
                             <div class="sel-info">
                                 <div class="sel-price"><b>Get Started</b><em>Active</em></div>
                                 <div class="sel-spec">12 galleries &middot; CRM &middot; SEO setup</div>
@@ -3278,7 +3290,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
                         </div>
 
                         <div class="sel-row hp" style="--hd:.34s">
-                            <img src="reserve-legacy-mark.png" alt="" loading="lazy" decoding="async">
+                            <img src="assets/reserve-legacy-icon.png" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='assets/reserve-legacy-mark.png'">
                             <div class="sel-info">
                                 <div class="sel-price"><b>Get Started</b><em>Active</em></div>
                                 <div class="sel-spec">Print store &middot; 240 images &middot; Stripe</div>
@@ -3325,7 +3337,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
             <div class="hscene hs-collage">
                 <div class="col-main hp" style="--hd:.05s"><img src="hero-mockup.png" alt="" loading="lazy" decoding="async"></div>
                 <div class="col-s col-b hp" style="--hd:.30s"><img src="Blog1.jpg" alt="" loading="lazy" decoding="async"></div>
-                <div class="col-s col-b hp" style="--hd:.40s"><img src="ChatGPT Image Aug 23, 2026, 06_12_23 PM.png" alt="" loading="lazy" decoding="async"></div>
+                <div class="col-s col-a hp" style="--hd:.40s"><img src="ChatGPT Image Aug 23, 2026, 06_12_23 PM.png" alt="" loading="lazy" decoding="async"></div>
                 <div class="col-s col-c hp" style="--hd:.50s"><img src="sara-kurfess-6lcT2kRPvnI-unsplash.jpg" alt="" loading="lazy" decoding="async"></div>
             </div>
 
@@ -3570,18 +3582,22 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
 
 <!-- ═══════════════ CLIENT STORY VIDEO ═══════════════ -->
 <section class="stories" id="stories">
-    <div class="stories-stage">
+    <div class="stories-shell">
+        <div class="stories-stage">
         <div class="stories-media" id="storyMedia">
             <img class="smedia is-on" src="shots/3efea664-4b27-44c6-a3a0-4167746e978a.png" alt="" decoding="async">
             <img class="smedia" src="shots/7376a21c-c425-463a-abe5-45da661b90e8.png" alt="" loading="lazy" decoding="async">
             <img class="smedia" src="shots/52c40cf6-eaa4-4040-9e00-28ed0a56d2f1.png" alt="" loading="lazy" decoding="async">
         </div>
 
+
+
+        </div><!-- /stories-stage -->
+
         <div class="stories-name">
             <strong id="storyName">Lauren Hart</strong>
             <span id="storyRole">Owner, Lauren Hart Photography</span>
         </div>
-
         <div class="stories-arrows">
             <button type="button" data-story="prev" aria-label="Previous story"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
             <button type="button" data-story="next" aria-label="Next story"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
@@ -3613,7 +3629,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
                 </span>
             </button>
         </div>
-    </div>
+    </div><!-- /stories-shell -->
 </section>
 
 <!-- ═══════════════ TESTIMONIALS + STATS (shared background) ═══════════════ -->
@@ -5878,14 +5894,53 @@ document.addEventListener('keydown', function(e) {
   .link-explore i svg { width: 13px; height: 13px; }
   .band--ink .link-explore i { background: rgba(255,255,255,0.14); }
 
-  /* ---- Client story ------------------------------------------------------ */
-  .stories-stage { aspect-ratio: 1 / 1.3; }
-  .stories-name { left: var(--gut); right: var(--gut); bottom: 188px; max-width: none; }
-  .stories-name strong { font-size: 27px; }
-  .stories-name span { font-size: 15px; }
-  .stories-arrows { left: var(--gut); right: var(--gut); bottom: 124px; justify-content: space-between; }
-  .stories-arrows button { width: 42px; height: 42px; }
-  .stories-thumbs { padding: 12px; }
+  /* ---- Client story ------------------------------------------------------
+     These slides are WEBSITE SCREENSHOTS - wide images. Cropping them into a
+     portrait frame with object-fit: cover threw away most of the width, so
+     you saw a vertical slice of somebody's homepage. On phones the stage is
+     landscape (16/10, the shape of a screenshot) and the caption, arrows and
+     thumb rail all sit BELOW it rather than on top, because a 244px-tall
+     stage has no room for an overlay. */
+  .stories-stage { aspect-ratio: 16 / 10; }
+  .smedia { object-position: 50% 0; }
+  /* Nothing sits on the image now, so the scrim would only mute it. */
+  .stories-stage::after { background: linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.28) 100%); }
+
+  .stories-name {
+    position: static;
+    padding: 20px var(--gut) 0;
+    max-width: none;
+  }
+  .stories-name strong { font-size: 24px; }
+  .stories-name span { font-size: 14.5px; margin-top: 6px; }
+
+  .stories-arrows {
+    position: static;
+    padding: 16px var(--gut) 0;
+    gap: 12px;
+    justify-content: flex-start;
+  }
+  .stories-arrows button {
+    width: 42px; height: 42px;
+    border-color: rgba(255, 255, 255, 0.28);
+  }
+
+  .stories-thumbs {
+    position: static;
+    padding: 22px var(--gut) 0;
+    gap: 10px;
+    scroll-snap-type: x mandatory;
+  }
+  .sthumb {
+    width: 74vw;
+    max-width: 300px;
+    min-height: 0;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.07);
+    scroll-snap-align: start;
+  }
+  .sthumb-avatar { width: 44px; height: 44px; border-radius: 8px; }
 
   /* ---- Testimonials ------------------------------------------------------ */
   .testi-title { max-width: 16ch; font-size: clamp(30px, 8vw, 38px); font-weight: 600; margin-bottom: 30px; }
@@ -6516,7 +6571,17 @@ document.addEventListener('keydown', function(e) {
     nameEl.textContent = t.dataset.name;
     roleEl.textContent = t.dataset.role;
     if (userAction) {
-      t.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+      /* The rail now sits outside the stage and scrolls normally on phones, so
+         scrollIntoView would drag the whole PAGE vertically. Scroll the rail
+         itself instead — horizontal only, page untouched. */
+      var pad = 16;
+      var left = t.offsetLeft - thumbs.offsetLeft - pad;
+      var right = left + t.offsetWidth + pad * 2;
+      if (left < thumbs.scrollLeft) {
+        thumbs.scrollTo({ left: left, behavior: 'smooth' });
+      } else if (right > thumbs.scrollLeft + thumbs.clientWidth) {
+        thumbs.scrollTo({ left: right - thumbs.clientWidth, behavior: 'smooth' });
+      }
     }
   }
 

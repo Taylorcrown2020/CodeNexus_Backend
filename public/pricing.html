@@ -3311,6 +3311,10 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
   border: 0;
 }
 
+/* Jump targets have to clear the fixed announcement bar + nav, or the anchor
+   lands underneath them. Follows the wide tiers because --nav-h grows there. */
+#plans, #enterprise, #compare { scroll-margin-top: calc(var(--ann-h) + var(--nav-h) + 14px); }
+
 .pr-hero { background: var(--paper-2); margin-top: calc(var(--ann-h) + var(--nav-h)); padding: 54px 0 0; text-align: center; }
 @media (min-width: 1000px) { .pr-hero { padding-top: 96px; } }
 .pr-hero h1 { font-size: clamp(32px, 6.6vw, 56px); font-weight: 700; letter-spacing: -0.04em; line-height: 1.05; max-width: 15ch; margin: 0 auto 18px; }
@@ -3325,7 +3329,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
   border-radius: 999px;
   padding: 6px;
 }
-.pr-toggle button {
+.pr-toggle a {
   padding: 13px 26px;
   border-radius: 999px;
   font-size: 14.5px;
@@ -3334,7 +3338,9 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
   white-space: nowrap;
   transition: background 0.25s var(--ease), color 0.25s var(--ease), box-shadow 0.25s var(--ease);
 }
-.pr-toggle button[aria-selected="true"] { background: #fff; color: var(--ink); box-shadow: 0 2px 10px rgba(5,5,6,0.08); }
+.pr-toggle a { display: inline-flex; align-items: center; text-decoration: none; }
+.pr-toggle a.is-on { background: #fff; color: var(--ink); box-shadow: 0 2px 10px rgba(5,5,6,0.08); }
+.pr-toggle a:hover { color: var(--ink); }
 
 /* Plan cards ------------------------------------------------------------- */
 .pr-plans { background: var(--paper-2); padding: 40px 0 0; }
@@ -3368,7 +3374,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
   font-size: 10.5px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase;
   color: var(--muted-l);
 }
-.pr-seatbar .pr-seats { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+.pr-seatbar .pr-seat-val { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
 
 .pr-card .btn { width: 100%; margin: 22px 0 26px; border-radius: 4px; }
 .pr-inherits { font-size: 12.5px; font-weight: 700; color: var(--ink); margin-bottom: 16px; }
@@ -3582,7 +3588,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
   /* Everything else that was sized for a desktop column. */
   .pr-hero h1 { max-width: 100%; }
   .pr-toggle { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
-  .pr-toggle button { padding: 13px 10px; font-size: 13.5px; }
+  .pr-toggle a { padding: 13px 10px; font-size: 13.5px; }
   .pr-card .pr-tag { min-height: 0; }
   .pr-quote-img { max-width: 320px; aspect-ratio: 1 / 1; }
   .pr-quote blockquote { font-size: clamp(21px, 5.6vw, 28px); }
@@ -3767,21 +3773,21 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
         <h1>Plans built for photographers who are going somewhere</h1>
         <p>Every plan is built around a different stage of growth, so what you pay for matches what you are actually trying to do next.</p>
 
-        <div class="pr-toggle" role="tablist" aria-label="Studio size">
-            <button type="button" role="tab" aria-selected="true"  data-size="solo">Solo &amp; small studio</button>
-            <button type="button" role="tab" aria-selected="false" data-size="team">Multi-shooter studio</button>
+        <div class="pr-toggle" aria-label="Studio size">
+            <a class="is-on" href="#plans">Solo &amp; small studio</a>
+            <a href="#enterprise">Multi-shooter studio</a>
         </div>
     </div>
 </header>
 
 <!-- ═══════════════ PLAN CARDS ═══════════════ -->
-<section class="pr-plans">
+<section class="pr-plans" id="plans">
     <div class="wrap">
         <div class="pr-grid">
                 <article class="pr-card">
                     <h2>Launch</h2>
                     <p class="pr-tag">Get a real portfolio online and start capturing enquiries.</p>
-                    <p class="pr-seatbar"><span class="pr-seatbar-k">Seats</span><span class="pr-seats" data-solo="1 studio login" data-team="1 login &mdash; solo only">1 studio login</span></p>
+                    <p class="pr-seatbar"><span class="pr-seatbar-k">Seats</span><span class="pr-seat-val">1 studio login</span></p>
                     <button class="btn btn--gold" onclick="openModal()">Get started</button>
                     <ul class="pr-feats">
                         <li><span class="pr-tick" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span>Custom-designed photography website</span></li>
@@ -3796,7 +3802,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
                 <article class="pr-card">
                     <h2>Brand</h2>
                     <p class="pr-tag">Get found by the clients who are already searching.</p>
-                    <p class="pr-seatbar"><span class="pr-seatbar-k">Seats</span><span class="pr-seats" data-solo="Up to 3 logins" data-team="Up to 5 logins">Up to 3 logins</span></p>
+                    <p class="pr-seatbar"><span class="pr-seatbar-k">Seats</span><span class="pr-seat-val">Up to 3 logins</span></p>
                                         <p class="pr-inherits">Includes everything in Launch, plus:</p>
                     <button class="btn btn--gold" onclick="openModal()">Get started</button>
                     <p class="pr-inherits">Includes everything in Launch, plus:</p>
@@ -3811,7 +3817,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
                 <article class="pr-card">
                     <h2>Scale</h2>
                     <p class="pr-tag">Turn the enquiries you get into booked dates.</p>
-                    <p class="pr-seatbar"><span class="pr-seatbar-k">Seats</span><span class="pr-seats" data-solo="Up to 6 logins" data-team="Up to 12 logins">Up to 6 logins</span></p>
+                    <p class="pr-seatbar"><span class="pr-seatbar-k">Seats</span><span class="pr-seat-val">Up to 6 logins</span></p>
                                         <p class="pr-inherits">Includes everything in Brand, plus:</p>
                     <button class="btn btn--gold" onclick="openModal()">Get started</button>
                     <p class="pr-inherits">Includes everything in Brand, plus:</p>
@@ -3827,7 +3833,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
                 <article class="pr-card">
                     <h2>All In</h2>
                     <p class="pr-tag">Own your market and hand us the whole operation.</p>
-                    <p class="pr-seatbar"><span class="pr-seatbar-k">Seats</span><span class="pr-seats" data-solo="Up to 12 logins" data-team="Unlimited logins">Up to 12 logins</span></p>
+                    <p class="pr-seatbar"><span class="pr-seatbar-k">Seats</span><span class="pr-seat-val">Up to 12 logins</span></p>
                                         <p class="pr-inherits">Includes everything in Scale, plus:</p>
                     <button class="btn btn--gold" onclick="openModal()">Get started</button>
                     <p class="pr-inherits">Includes everything in Scale, plus:</p>
@@ -3850,7 +3856,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
 </section>
 
 <!-- ═══════════════ ENTERPRISE ═══════════════ -->
-<section class="band band--ink">
+<section class="band band--ink" id="enterprise">
     <div class="wrap pr-ent">
         <div>
             <span class="pr-ent-eyebrow">For large studios &amp; agencies</span>
@@ -4025,7 +4031,7 @@ nav.nav--light.nav--scrolled .nav-logo-mark { filter: none; }
                     <tr><th scope="row">Social media management</th><td><span class="pr-no" aria-hidden="true">&mdash;</span><span class="sr-only">Not included</span></td><td><span class="pr-no" aria-hidden="true">&mdash;</span><span class="sr-only">Not included</span></td><td><span class="pr-no" aria-hidden="true">&mdash;</span><span class="sr-only">Not included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td></tr>
                     <tr><th scope="row">Monthly reporting call</th><td><span class="pr-no" aria-hidden="true">&mdash;</span><span class="sr-only">Not included</span></td><td><span class="pr-no" aria-hidden="true">&mdash;</span><span class="sr-only">Not included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td></tr>
                     <tr class="pr-group"><th scope="rowgroup">Team &amp; support</th><td></td><td></td><td></td><td></td></tr>
-                    <tr><th scope="row">Studio logins</th><td><span class="pr-val pr-seats" data-solo="1" data-team="1">1</span></td><td><span class="pr-val pr-seats" data-solo="Up to 3" data-team="Up to 5">Up to 3</span></td><td><span class="pr-val pr-seats" data-solo="Up to 6" data-team="Up to 12">Up to 6</span></td><td><span class="pr-val pr-seats" data-solo="Up to 12" data-team="Unlimited">Up to 12</span></td></tr>
+                    <tr><th scope="row">Studio logins</th><td><span class="pr-val">1</span></td><td><span class="pr-val">Up to 3</span></td><td><span class="pr-val">Up to 6</span></td><td><span class="pr-val">Up to 12</span></td></tr>
                     <tr><th scope="row">Onboarding and launch</th><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td></tr>
                     <tr><th scope="row">Email support</th><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td></tr>
                     <tr><th scope="row">Phone support</th><td><span class="pr-no" aria-hidden="true">&mdash;</span><span class="sr-only">Not included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td><td><span class="pr-yes" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="sr-only">Included</span></td></tr>
@@ -6791,18 +6797,8 @@ document.addEventListener('keydown', function(e) {
 <script>
 (function () {
   'use strict';
-  /* Audience toggle: swaps the seat line on each card. It does not change
-     tiers - the plans are the same, the seat allowance is what moves. */
-  var btns = document.querySelectorAll('.pr-toggle button');
-  btns.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var size = btn.getAttribute('data-size');
-      btns.forEach(function (b) { b.setAttribute('aria-selected', String(b === btn)); });
-      document.querySelectorAll('.pr-seats').forEach(function (el) {
-        el.textContent = el.getAttribute('data-' + size) || el.textContent;
-      });
-    });
-  });
+  /* The two hero options are plain anchors now - one stays on the plan cards,
+     the other jumps to the Enterprise block - so no JS is needed for them. */
 
   /* Compare-table plan picker. Phones only - above 1000px the CSS ignores
      data-plan and all four columns show, so this is harmless there. */

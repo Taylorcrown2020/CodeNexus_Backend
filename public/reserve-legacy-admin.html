@@ -1,0 +1,2665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reserve Legacy — Platform Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style id="appStyle">
+/* ============================================================
+   Reserve Legacy CRM — design copied from the Brisk reference
+   Colours sampled from the supplied recording with Pillow.
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:14px;color:var(--ink);background:var(--white);
+  -webkit-font-smoothing:antialiased;overflow:hidden;
+}
+:root{
+  --ink:#0d1019;
+  --body:#3f444d;
+  --muted:#8b8f98;
+  --faint:#a9aeb6;
+  --line:#ececee;
+  --line-2:#f2f2f4;
+  --surface:#fafafa;
+  --surface-2:#f7f7f8;
+  --white:#fff;
+  --brand-a:#1e7aa6;
+  --brand-b:#12526f;
+  --logo:#112166;
+  --orange:#fc8445;
+  --blue:#2f6df6;
+  --green:#16a34a;
+  --green-bg:#e7f7ee;
+  --green-tx:#157a4a;
+  --red-bg:#fdeaea;
+  --red-tx:#c0392b;
+  --sb-w:246px;
+  --top-h:64px;
+  --tool-h:60px;
+  --r:12px;
+  --shadow:0 1px 2px rgba(13,16,25,.05);
+  --shadow-lg:0 12px 34px rgba(13,16,25,.13),0 2px 6px rgba(13,16,25,.06);
+}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+input,select,textarea{font:inherit;color:inherit}
+a{color:inherit}
+svg{display:block;flex:none}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#dcdde0;border-radius:20px;border:3px solid #fff}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- shell ---------- */
+.app{display:flex;height:100vh;overflow:hidden}
+.app[hidden],[hidden]{display:none!important}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* ---------- sidebar ---------- */
+.sb{
+  width:var(--sb-w);flex:none;background:var(--white);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;padding:14px 14px 12px;overflow:hidden;
+}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:2px 4px 14px}
+.sb-tile{
+  width:40px;height:40px;border-radius:11px;background:var(--logo);color:#fff;flex:none;
+  display:grid;place-items:center;font-weight:700;font-size:14px;letter-spacing:.02em;overflow:hidden;
+}
+.sb-tile img{width:100%;height:100%;object-fit:contain;padding:6px}
+.sb-brand-tx{min-width:0;line-height:1.25}
+.sb-brand-tx b{display:block;font-size:14px;font-weight:600}
+.sb-brand-tx span{display:block;font-size:11.5px;color:var(--muted)}
+.sb-collapse{margin-left:auto;color:var(--faint);padding:4px;border-radius:6px}
+.sb-collapse:hover{background:var(--surface-2);color:var(--body)}
+
+.ws{
+  display:flex;align-items:center;gap:9px;width:100%;height:44px;padding:0 10px;
+  border:1px solid #e9e9ec;border-radius:10px;background:#fff;margin-bottom:16px;
+}
+.ws:hover{background:var(--surface)}
+.ws-av{width:22px;height:22px;border-radius:6px;flex:none;object-fit:cover;background:var(--logo)}
+.ws b{font-size:13.5px;font-weight:600;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ws .chev{color:var(--faint)}
+
+.sb-scroll{flex:1;overflow-y:auto;overflow-x:hidden;margin:0 -4px;padding:0 4px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-sec{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#a9aeb6;
+  padding:14px 10px 5px}
+.nav-sec:first-child{padding-top:2px}
+.nav-item{
+  display:flex;align-items:center;gap:11px;height:37px;padding:0 10px;border-radius:9px;
+  font-size:13.5px;font-weight:500;color:#4b4f57;width:100%;text-align:left;
+  border:1px solid transparent;
+}
+.nav-item svg{color:#7b808a}
+.nav-item:hover{background:var(--surface)}
+.nav-item.is-on{background:#f4f4f5;border-color:#ececee;color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
+.nav-item.is-on svg{color:var(--ink)}
+.nav-badge{margin-left:auto;font-size:11px;font-weight:600;color:var(--muted);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:20px;padding:1px 7px}
+.nav-item.is-on .nav-badge{background:#fff}
+
+.grp{margin-top:20px}
+.grp-head{display:flex;align-items:center;gap:9px;padding:0 10px;height:30px}
+.grp-sq{width:16px;height:16px;border-radius:4px;display:grid;place-items:center;color:#fff;flex:none}
+.grp-head b{font-size:12.5px;font-weight:500;color:#6f747d;flex:1;text-align:left}
+.grp-head .ic{color:var(--faint);padding:2px;border-radius:5px}
+.grp-head .ic:hover{background:var(--surface-2);color:var(--body)}
+.grp-kids{margin:2px 0 0 18px;padding-left:12px;border-left:1px solid var(--line);
+  display:flex;flex-direction:column;gap:1px}
+.grp-kids button{text-align:left;font-size:13px;padding:7px 8px;border-radius:7px;color:#5c616a}
+.grp-kids button:hover{background:var(--surface);color:var(--ink)}
+.grp-kids button.is-on{color:var(--ink);font-weight:600;background:var(--surface)}
+
+.sb-foot{padding-top:12px;border-top:1px solid var(--line-2);margin-top:12px}
+.sb-foot .nav-item{height:34px}
+.sb-foot .nav-item .chev{margin-left:auto;color:var(--faint)}
+
+.storage{background:var(--surface-2);border-radius:12px;padding:11px 12px;margin:12px 0 10px}
+.storage-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.storage-top b{font-size:12.5px;font-weight:600}
+.storage-top span{font-size:11.5px;color:var(--muted)}
+.storage-bar{height:5px;border-radius:3px;background:#e6e6e9;overflow:hidden}
+.storage-bar i{display:block;height:100%;background:var(--orange);border-radius:3px}
+.storage p{margin:8px 0 10px;font-size:11.5px;color:var(--muted)}
+.storage-btn{display:flex;align-items:center;gap:5px;width:100%;background:#fff;border:1px solid #e6e6e9;
+  border-radius:9px;height:34px;padding:0 6px 0 9px;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden}
+.storage-btn em{font-style:normal;font-weight:400;color:var(--muted);font-size:10.5px}
+.storage-btn .plus{margin-left:auto;width:20px;height:20px;border-radius:50%;background:var(--blue);
+  color:#fff;display:grid;place-items:center;flex:none}
+
+.me{display:flex;align-items:center;gap:10px;width:100%;padding:6px 4px 0}
+.me-av{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#dfe1e5;flex:none}
+.me-tx{min-width:0;flex:1;text-align:left;line-height:1.3}
+.me-tx b{display:flex;align-items:center;gap:4px;font-size:13.5px;font-weight:600}
+.me-tx span{display:block;font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.me .chev{color:var(--faint)}
+
+/* ---------- topbar ---------- */
+.top{height:var(--top-h);flex:none;display:flex;align-items:center;gap:12px;
+  padding:0 22px;border-bottom:1px solid var(--line-2)}
+.top h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:9px}
+.icon-btn{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;display:grid;
+  place-items:center;color:var(--body);background:#fff;position:relative}
+.icon-btn:hover{background:var(--surface)}
+.icon-btn .dot{position:absolute;top:8px;right:9px;width:6px;height:6px;border-radius:50%;background:#ef4444;
+  border:1.5px solid #fff}
+.top-search{display:flex;align-items:center;gap:8px;height:36px;width:216px;padding:0 12px;
+  border:1px solid var(--line);border-radius:10px;color:var(--faint)}
+.top-search input{border:0;outline:0;width:100%;font-size:13px;background:none}
+.top-search input::placeholder{color:var(--faint)}
+.btn-o{display:flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid var(--line);
+  border-radius:10px;font-size:13px;font-weight:500;background:#fff}
+.btn-o:hover{background:var(--surface)}
+
+/* ---------- toolbar ---------- */
+.tool{height:var(--tool-h);flex:none;display:flex;align-items:center;gap:10px;padding:0 22px}
+.btn-ai{display:flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:9px;color:#fff;
+  font-size:13px;font-weight:600;background:linear-gradient(180deg,var(--brand-a),var(--brand-b));
+  box-shadow:0 1px 2px rgba(18,82,111,.35)}
+.btn-ai:hover{filter:brightness(1.07)}
+.btn-dark{display:flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:9px;
+  background:var(--ink);color:#fff;font-size:13px;font-weight:600}
+.btn-dark:hover{background:#191d28}
+.btn-split{display:flex;align-items:center;background:var(--ink);color:#fff;border-radius:9px;height:36px}
+.btn-split>button{display:flex;align-items:center;gap:7px;height:36px;padding:0 13px;font-size:13px;font-weight:600}
+.btn-split>.sp{border-left:1px solid rgba(255,255,255,.18);padding:0 8px}
+.tool-right{margin-left:auto;display:flex;align-items:center;gap:9px}
+.updated{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--green-tx)}
+.seg{display:flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:10px;padding:3px;background:#fff}
+.seg button{display:flex;align-items:center;gap:6px;height:28px;padding:0 11px;border-radius:7px;
+  font-size:12.5px;font-weight:500;color:var(--muted)}
+.seg button.is-on{background:var(--surface-2);color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
+
+/* ---------- view canvas ---------- */
+.view{flex:1;overflow-y:auto;padding:0 22px 26px}
+.view[hidden]{display:none}
+
+/* ---------- generic card ---------- */
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r)}
+.card-h{display:flex;align-items:center;gap:10px;padding:16px 18px 0}
+.card-h h3{margin:0;font-size:14.5px;font-weight:600}
+.card-h .sp{margin-left:auto;display:flex;align-items:center;gap:8px}
+.dots{color:var(--faint);width:28px;height:28px;border-radius:8px;display:grid;place-items:center}
+.dots:hover{background:var(--surface-2);color:var(--body)}
+
+/* ---------- dashboard ---------- */
+.dash{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:15px 17px 17px}
+.kpi-t{display:flex;align-items:center;gap:6px;margin-bottom:13px}
+.kpi-t span{font-size:13.5px;font-weight:500;color:var(--body)}
+.chip{font-size:11.5px;font-weight:600;border-radius:20px;padding:2px 8px;display:inline-flex;align-items:center;gap:3px}
+.chip-up{background:var(--green-bg);color:var(--green-tx)}
+.chip-dn{background:var(--red-bg);color:var(--red-tx)}
+.kpi-v{display:flex;align-items:baseline;gap:9px}
+.kpi-v b{font-size:25px;font-weight:600;letter-spacing:-.02em}
+.kpi-v em{font-style:normal;font-size:12.5px;color:var(--muted)}
+.rev-head{display:flex;align-items:flex-start;padding:16px 18px 4px}
+.rev-head h3{margin:0 0 8px;font-size:14px;font-weight:500;color:var(--body);display:flex;align-items:center;gap:5px}
+.rev-amt{font-size:27px;font-weight:600;letter-spacing:-.02em}
+.rev-amt em{font-style:normal;color:var(--muted)}
+.rev-amt span{font-size:12.5px;font-weight:500;color:var(--green-tx);margin-left:8px}
+.rev-range{margin-left:auto;display:flex;gap:2px;border:1px solid var(--line);border-radius:9px;padding:3px}
+.rev-range button{height:26px;padding:0 10px;border-radius:6px;font-size:12px;font-weight:500;color:var(--muted)}
+.rev-range button.is-on{background:var(--surface-2);color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
+.rev-wrap{position:relative;padding:4px 14px 14px}
+.tip{position:absolute;pointer-events:none;background:#1c202b;color:#fff;border-radius:11px;padding:9px 13px;
+  box-shadow:var(--shadow-lg);opacity:0;transition:opacity .12s;z-index:5}
+.tip.on{opacity:1}
+.tip i{display:block;font-style:normal;font-size:11.5px;color:#9aa0ad;margin-bottom:2px}
+.tip b{font-size:16px;font-weight:600}
+.dash-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+.tabs{display:flex;gap:2px;border:1px solid var(--line);border-radius:10px;padding:3px;margin:12px 18px 0}
+.tabs button{flex:1;height:30px;border-radius:7px;font-size:12.5px;font-weight:500;color:var(--muted)}
+.tabs button.is-on{background:var(--surface-2);color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
+.lm-bars{display:flex;gap:5px;padding:16px 18px 0}
+.lm-bars i{height:5px;border-radius:3px;flex:none}
+.lm-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;padding:14px 18px 18px}
+.lm-cell{border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+.lm-cell i{display:block;width:26px;height:3px;border-radius:2px;margin-bottom:9px}
+.lm-cell span{display:block;font-size:12.5px;color:var(--body);margin-bottom:5px}
+.lm-cell b{font-size:18px;font-weight:600}
+.lm-cell b em{font-style:normal;font-size:12.5px;font-weight:400;color:var(--muted);margin-left:3px}
+.legend{display:flex;flex-wrap:wrap;gap:13px;padding:10px 18px 0}
+.legend span{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--body)}
+.legend i{width:7px;height:7px;border-radius:50%}
+.geo{padding:12px 18px 18px}
+.geo-map{position:relative;background:var(--surface);border-radius:10px;padding:10px;margin-bottom:12px}
+.geo-zoom{position:absolute;left:16px;top:16px;background:#fff;border:1px solid var(--line);border-radius:7px;
+  display:flex;flex-direction:column;overflow:hidden;z-index:2}
+.geo-zoom button{width:22px;height:21px;font-size:13px;color:var(--muted);display:grid;place-items:center}
+.geo-zoom button+button{border-top:1px solid var(--line)}
+.geo-list{display:flex;flex-direction:column;gap:11px}
+.geo-list li{display:flex;align-items:center;gap:9px;font-size:13px}
+.geo-list li>span:first-child{color:var(--muted);width:12px}
+.geo-list li b{font-weight:500}
+.geo-list li em{margin-left:auto;font-style:normal;color:var(--muted);font-size:12.5px}
+.geo-flag{width:17px;height:17px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:9px;
+  color:#fff;font-weight:700}
+/* calendar rail */
+.cal-head{display:flex;align-items:center;padding:16px 16px 0}
+.cal-head h3{margin:0;font-size:14.5px;font-weight:600}
+.cal-sel{margin-left:auto;display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;
+  border:1px solid var(--line);border-radius:8px;font-size:12.5px;font-weight:500}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;padding:14px 10px 10px;
+  border-bottom:1px solid var(--line-2)}
+.cal-days span{font-size:11.5px;color:var(--muted);padding-bottom:6px}
+.cal-days b{font-size:13px;font-weight:500;color:var(--body);padding-top:2px}
+.cal-days .today{color:var(--ink);font-weight:700}
+.cal-days .today.hd{color:var(--ink)}
+.cal-body{padding:6px 12px 16px;display:flex;flex-direction:column;gap:2px}
+.cal-slot{display:grid;grid-template-columns:44px 1fr;gap:6px;align-items:start}
+.cal-slot>span{font-size:11.5px;color:var(--muted);padding-top:11px}
+.cal-ev{border:1px solid var(--line);border-radius:11px;padding:11px 12px;background:#fff}
+.cal-ev b{display:block;font-size:13px;font-weight:600;margin-bottom:3px}
+.cal-ev span{display:block;font-size:11.5px;color:var(--muted)}
+.cal-ev-f{display:flex;align-items:center;margin-top:10px}
+.stack{display:flex}
+.stack img,.stack .plus{width:22px;height:22px;border-radius:50%;border:2px solid #fff;object-fit:cover;
+  margin-left:-6px;background:#dfe1e5}
+.stack>:first-child{margin-left:0}
+.stack .plus{display:grid;place-items:center;font-size:9px;font-weight:700;color:var(--body);background:#eceef1}
+.cal-ev-btn{margin-left:auto;display:flex;align-items:center;gap:5px;height:26px;padding:0 8px;
+  border:1px solid var(--line);border-radius:7px;font-size:11.5px;font-weight:500}
+
+/* ---------- table (Companies reference) ---------- */
+.insight{border:1px solid var(--line);border-radius:var(--r);background:#fff;margin-bottom:14px;overflow:hidden}
+.insight-h{display:flex;align-items:center;gap:9px;padding:16px 18px 0}
+.insight-h b{font-size:14px;font-weight:500;color:var(--body)}
+.insight-v{padding:8px 18px 0;display:flex;align-items:center}
+.insight-v .n{font-size:27px;font-weight:600;letter-spacing:-.02em}
+.insight-v .n em{font-style:normal;color:var(--muted)}
+.insight-v .n span{font-size:12.5px;font-weight:400;color:var(--muted);margin-left:6px}
+.insight-v .acts{margin-left:auto;display:flex;gap:8px}
+.insight-cols{display:grid;grid-template-columns:repeat(4,1fr);margin-top:16px}
+.insight-col{padding:0 18px 0;border-left:1px solid var(--line-2)}
+.insight-col:first-child{border-left:0}
+.insight-col .t{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;margin-bottom:9px}
+.insight-col .t i{width:7px;height:7px;border-radius:2px}
+.insight-col .t em{margin-left:auto;font-style:normal;font-size:11px;font-weight:600;color:var(--green-tx);
+  background:var(--green-bg);border-radius:20px;padding:2px 8px}
+.insight-col .d{display:flex;align-items:baseline;font-size:12.5px;color:var(--muted);margin-bottom:12px}
+.insight-col .d b{color:var(--ink);font-weight:600;margin-right:4px}
+.insight-col .d span{margin-left:auto;color:var(--ink);font-weight:600;font-size:14px}
+.insight-col .rule{height:3px;border-radius:2px}
+
+.tbl-wrap{border:1px solid var(--line);border-radius:var(--r);background:#fff;overflow:hidden}
+table.tbl{width:100%;border-collapse:collapse;table-layout:fixed}
+.tbl th{
+  text-align:left;font-size:12.5px;font-weight:500;color:var(--body);padding:12px 14px;
+  border-bottom:1px solid var(--line);background:#fff;white-space:nowrap;
+}
+.tbl th.s{cursor:pointer;user-select:none}
+.tbl th .th{display:flex;align-items:center;gap:6px}
+.tbl th .th svg{margin-left:auto;color:var(--faint)}
+.tbl td{padding:11px 14px;border-bottom:1px solid var(--line-2);font-size:13px;vertical-align:middle;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover{background:#fcfcfd}
+.tbl tbody tr.sel{background:#f7faff}
+.cbx{width:16px;height:16px;border:1.5px solid #d3d5da;border-radius:4px;display:grid;place-items:center;
+  color:transparent;background:#fff;flex:none}
+.cbx.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.cell-b{display:flex;align-items:center;gap:9px;min-width:0}
+.logo-sq{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:#fff;
+  font-size:10.5px;font-weight:700;flex:none}
+.cell-b b{font-weight:500;overflow:hidden;text-overflow:ellipsis}
+.lnk{color:#2563eb;text-decoration:underline;text-underline-offset:2px}
+.pill{display:inline-flex;align-items:center;font-size:11.5px;font-weight:600;border-radius:20px;padding:3px 10px}
+.p-leads{background:#e4e4e4;color:#4b4f57}
+.p-discovery{background:#c0d4fe;color:#1b4bb5}
+.p-demo{background:#fdd4be;color:#a1522a}
+.p-won{background:#c2f4d9;color:#137a4a}
+.p-lost{background:#fdeaea;color:#c0392b}
+.av{width:26px;height:26px;border-radius:50%;object-fit:cover;flex:none;display:grid;place-items:center;
+  font-size:10.5px;font-weight:700;color:#fff}
+.score-wrap{display:flex;align-items:center;gap:9px}
+.score-bar{flex:1;height:5px;border-radius:3px;background:#eceef1;overflow:hidden;min-width:40px}
+.score-bar i{display:block;height:100%;border-radius:3px}
+.score-n{font-size:11.5px;font-weight:600;color:var(--body);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:20px;padding:1px 7px}
+.tbl-foot{display:flex;align-items:center;gap:10px;padding:13px 16px;border-top:1px solid var(--line)}
+.tbl-foot>span{font-size:12.5px;color:var(--muted)}
+.per{display:flex;align-items:center;gap:7px;height:32px;padding:0 10px;border:1px solid var(--line);
+  border-radius:8px;font-size:12.5px;font-weight:500}
+.pager{margin-left:auto;display:flex;align-items:center;gap:4px}
+.pager button{min-width:30px;height:30px;border-radius:8px;font-size:12.5px;font-weight:500;color:var(--body);
+  display:grid;place-items:center}
+.pager button:hover{background:var(--surface)}
+.pager button.is-on{background:var(--surface-2);border:1px solid var(--line);font-weight:600;color:var(--ink)}
+
+/* bulk bar */
+.bulk{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:var(--ink);color:#fff;
+  border-radius:13px;padding:9px 10px 9px 16px;display:flex;align-items:center;gap:12px;
+  box-shadow:var(--shadow-lg);opacity:0;pointer-events:none;transition:.18s;z-index:40}
+.bulk.on{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
+.bulk b{font-size:13px;font-weight:600}
+.bulk .sep{width:1px;height:20px;background:rgba(255,255,255,.16)}
+.bulk button{display:flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:8px;
+  font-size:12.5px;font-weight:500;color:#d7dae1}
+.bulk button:hover{background:rgba(255,255,255,.1);color:#fff}
+.bulk .x{padding:0 8px;color:#8b909c}
+
+/* ---------- kanban ---------- */
+.board{display:flex;gap:14px;align-items:flex-start;height:100%;padding-bottom:4px}
+.col{flex:1 1 0;min-width:238px;background:#fafafa;border-radius:var(--r);padding:10px;
+  display:flex;flex-direction:column;max-height:100%}
+.col-h{display:flex;align-items:center;gap:8px;padding:2px 4px 10px}
+.col-h .grip{color:#c8cbd1;cursor:grab}
+.col-h .n{font-size:12.5px;font-weight:600;color:var(--muted)}
+.col-h .dots{margin-left:auto}
+.col-body{display:flex;flex-direction:column;gap:9px;overflow-y:auto;padding:1px}
+.col.drag-over{outline:2px dashed #c6d4e6;outline-offset:-2px}
+.kc{background:#fff;border:1px solid var(--line);border-radius:11px;padding:13px 13px 11px;cursor:grab;
+  box-shadow:var(--shadow)}
+.kc:active{cursor:grabbing}
+.kc.ghost{opacity:.4}
+.kc-t{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.kc-t .logo-sq{width:22px;height:22px;border-radius:6px}
+.kc-t b{font-size:13.5px;font-weight:600}
+.kc-t .chev{color:#c8cbd1}
+.kc-t span{font-size:12.5px;color:var(--muted)}
+.kc-d{font-size:13px;color:var(--body);margin:0 0 12px;line-height:1.4}
+.kc-f{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.tag{display:inline-flex;align-items:center;gap:5px;height:25px;padding:0 9px;border:1px solid var(--line);
+  border-radius:7px;font-size:11.5px;font-weight:500;color:var(--body)}
+.tag svg{color:var(--faint)}
+.bars{display:flex;align-items:flex-end;gap:2px;height:12px}
+.bars i{width:3px;border-radius:1px;background:#e2e4e8}
+.bars.hot i:nth-child(1){background:#f0a04b;height:5px}
+.bars.hot i:nth-child(2){background:#f0a04b;height:8px}
+.bars.hot i:nth-child(3){background:#f0a04b;height:12px}
+.bars.warm i:nth-child(1){background:#7aa7d9;height:5px}
+.bars.warm i:nth-child(2){background:#7aa7d9;height:8px}
+.bars.warm i:nth-child(3){height:12px}
+.bars.cool i:nth-child(1){background:#c3c7ce;height:5px}
+.bars.cool i:nth-child(2){height:8px}
+.bars.cool i:nth-child(3){height:12px}
+
+/* ---------- smart actions ---------- */
+.sa-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px}
+.sa-list{display:flex;flex-direction:column;gap:11px}
+.sa{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:15px 17px}
+.sa.done{opacity:.5}
+.sa-top{display:flex;align-items:center;gap:11px}
+.sa-rank{width:22px;height:22px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);
+  display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--muted);flex:none}
+.sa-top b{font-size:14.5px;font-weight:600}
+.sa-top .pill{margin-left:2px}
+.sa-top .sp{margin-left:auto;display:flex;align-items:center;gap:8px}
+.sa-why{display:flex;gap:9px;margin:12px 0 0;padding:11px 13px;background:var(--surface);border-radius:10px}
+.sa-why svg{color:var(--brand-a);margin-top:1px}
+.sa-why p{margin:0;font-size:13px;color:var(--body);line-height:1.5}
+.sa-why p b{color:var(--ink);font-weight:600}
+.sa-draft{margin-top:11px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.sa-draft-h{display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:1px solid var(--line-2);
+  background:var(--surface);font-size:12px;font-weight:600;color:var(--muted)}
+.sa-draft-h .ch{margin-left:auto;font-weight:500;color:var(--faint)}
+.sa-draft textarea{width:100%;border:0;outline:0;resize:vertical;min-height:78px;padding:12px 13px;
+  font-size:13px;line-height:1.55;color:var(--body)}
+.sa-acts{display:flex;align-items:center;gap:8px;margin-top:11px}
+.sa-acts .sp{margin-left:auto}
+.sa-side .card+.card{margin-top:14px}
+.sig{display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line-2)}
+.sig:last-child{border-bottom:0}
+.sig-ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:none}
+.sig p{margin:0;font-size:12.5px;line-height:1.5;color:var(--body)}
+.sig p b{font-weight:600;color:var(--ink)}
+.sig time{display:block;font-size:11px;color:var(--faint);margin-top:3px}
+
+/* ---------- inbox ---------- */
+.inbox{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;height:100%;min-height:0}
+.thread-list{border:1px solid var(--line);border-radius:var(--r);background:#fff;overflow-y:auto}
+.th{display:flex;gap:11px;padding:13px 14px;border-bottom:1px solid var(--line-2);width:100%;text-align:left}
+.th:hover{background:#fcfcfd}
+.th.is-on{background:#f7faff}
+.th-tx{min-width:0;flex:1}
+.th-tx .r1{display:flex;align-items:center;gap:6px}
+.th-tx>b{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.th-tx time{margin-left:auto;font-size:11px;color:var(--faint);flex:none}
+.th-tx p{margin:3px 0 0;font-size:12px;color:var(--muted);line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ch-tag{font-size:9.5px;font-weight:700;letter-spacing:.04em;border-radius:4px;padding:1px 5px;flex:none}
+.ch-email{background:#e8effd;color:#1b4bb5}
+.ch-sms{background:#e7f7ee;color:#157a4a}
+.conv{border:1px solid var(--line);border-radius:var(--r);background:#fff;display:flex;flex-direction:column;min-height:0}
+.conv-h{display:flex;align-items:center;gap:11px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.conv-h b{font-size:14.5px;font-weight:600}
+.conv-h span{font-size:12.5px;color:var(--muted)}
+.conv-h .sp{margin-left:auto;display:flex;gap:8px}
+.conv-body{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
+.msg{max-width:78%;padding:11px 14px;border-radius:13px;font-size:13px;line-height:1.55}
+.msg time{display:block;font-size:10.5px;margin-top:6px;opacity:.6}
+.msg.in{background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:4px;align-self:flex-start}
+.msg.out{background:var(--ink);color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
+.conv-foot{border-top:1px solid var(--line);padding:12px 14px}
+.composer{border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.composer textarea{width:100%;border:0;outline:0;resize:none;height:66px;padding:11px 13px;font-size:13px}
+.composer-b{display:flex;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid var(--line-2);
+  background:var(--surface)}
+.composer-b .sp{margin-left:auto}
+
+/* ---------- sequences ---------- */
+.seq{border:1px solid var(--line);border-radius:var(--r);background:#fff;padding:16px 18px;margin-bottom:12px}
+.seq-h{display:flex;align-items:center;gap:11px}
+.seq-h b{font-size:14.5px;font-weight:600}
+.seq-h .sp{margin-left:auto;display:flex;align-items:center;gap:10px}
+.seq-meta{display:flex;flex-wrap:wrap;gap:16px;margin-top:9px;font-size:12.5px;color:var(--muted)}
+.seq-meta b{color:var(--ink);font-weight:600}
+.steps{display:flex;gap:8px;margin-top:14px;overflow-x:auto;padding-bottom:3px}
+.step{flex:none;min-width:158px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.step .w{font-size:10.5px;font-weight:700;letter-spacing:.05em;color:var(--faint);text-transform:uppercase}
+.step b{display:block;font-size:12.5px;font-weight:600;margin:5px 0 3px}
+.step span{font-size:11.5px;color:var(--muted)}
+.sw{width:38px;height:22px;border-radius:20px;background:#dcdee2;position:relative;flex:none;transition:.15s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;
+  background:#fff;box-shadow:var(--shadow);transition:.15s}
+.sw.on{background:var(--green)}
+.sw.on::after{left:19px}
+
+/* ---------- galleries / invoices ---------- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:14px}
+.tile{border:1px solid var(--line);border-radius:var(--r);background:#fff;overflow:hidden}
+.tile-img{height:124px;background:linear-gradient(135deg,#e8eaee,#f6f7f9);position:relative;
+  display:grid;place-items:center;color:#c2c6cd}
+.tile-img .pill{position:absolute;top:9px;left:9px}
+.tile-b{padding:12px 14px 14px}
+.tile-b>b{display:block;font-size:13.5px;font-weight:600}
+.tile-b span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.tile-s{display:flex;gap:14px;margin-top:11px;padding-top:11px;border-top:1px solid var(--line-2)}
+.tile-s div{font-size:11.5px;color:var(--muted)}
+.tile-s b{display:block;font-size:14px;color:var(--ink);font-weight:600}
+
+/* ---------- report builder ---------- */
+.rep{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:14px;align-items:start}
+.rep-side{border:1px solid var(--line);border-radius:var(--r);background:#fff;padding:16px 18px 20px}
+.rep-side-h{display:flex;align-items:center;gap:9px;margin-bottom:18px}
+.rep-side-h .sp{margin-left:auto;display:flex;gap:8px}
+.rep-side h4{margin:0 0 14px;font-size:15px;font-weight:600}
+.fld{margin-bottom:16px}
+.fld-l{display:flex;align-items:center;margin-bottom:7px}
+.fld-l span{font-size:12.5px;font-weight:500;color:var(--body)}
+.fld-l .x{margin-left:auto;color:var(--faint);padding:2px;border-radius:5px}
+.fld-l .x:hover{background:var(--surface-2);color:var(--body)}
+.pick{display:flex;align-items:center;gap:10px;width:100%;height:44px;padding:0 11px;border:1px solid var(--line);
+  border-radius:10px;background:#fff}
+.pick-ic{width:26px;height:26px;border-radius:7px;border:1px solid var(--line);display:grid;place-items:center;
+  color:var(--body);font-size:11px;font-weight:700;flex:none}
+.pick select{border:0;outline:0;background:none;flex:1;font-size:13px;font-weight:500;
+  appearance:none;cursor:pointer}
+.pick .chev{color:var(--faint)}
+.chk{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:500;margin-top:12px}
+.rep-legend{display:flex;flex-wrap:wrap;gap:14px;padding:0 18px 4px}
+.rep-legend span{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--body)}
+.rep-legend i{width:8px;height:8px;border-radius:50%}
+
+/* ---------- drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(13,16,25,.28);opacity:0;pointer-events:none;
+  transition:opacity .2s;z-index:50}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(470px,94vw);background:#fff;
+  border-left:1px solid var(--line);box-shadow:-16px 0 44px rgba(13,16,25,.13);
+  transform:translateX(100%);transition:transform .22s cubic-bezier(.4,0,.2,1);z-index:51;
+  display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.dr-h{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.dr-h .av{width:40px;height:40px;font-size:14px}
+.dr-h b{display:block;font-size:15.5px;font-weight:600}
+.dr-h span{display:block;font-size:12.5px;color:var(--muted)}
+.dr-tabs{display:flex;gap:3px;padding:10px 14px 0;border-bottom:1px solid var(--line);overflow-x:auto}
+.dr-tabs button{height:32px;padding:0 11px;border-radius:8px;font-size:12.5px;font-weight:500;
+  color:var(--muted);white-space:nowrap}
+.dr-tabs button.is-on{background:var(--surface-2);color:var(--ink);font-weight:600}
+.dr-body{flex:1;overflow-y:auto;padding:16px 18px 24px}
+.kv{display:grid;grid-template-columns:112px 1fr;gap:9px 12px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:500}
+.dr-sec{margin-top:20px}
+.dr-sec h4{margin:0 0 11px;font-size:12px;font-weight:700;letter-spacing:.05em;color:var(--faint);
+  text-transform:uppercase}
+.tl{position:relative;padding-left:20px}
+.tl::before{content:"";position:absolute;left:5px;top:5px;bottom:5px;width:1px;background:var(--line)}
+.tl-i{position:relative;padding-bottom:15px}
+.tl-i::before{content:"";position:absolute;left:-19px;top:4px;width:9px;height:9px;border-radius:50%;
+  background:#fff;border:2px solid var(--brand-a)}
+.tl-i p{margin:0;font-size:13px;color:var(--body);line-height:1.5}
+.tl-i p b{color:var(--ink);font-weight:600}
+.tl-i time{font-size:11px;color:var(--faint)}
+
+/* ---------- misc ---------- */
+.empty{display:grid;place-items:center;text-align:center;padding:70px 20px;color:var(--muted)}
+.empty>b{display:block;font-size:15px;color:var(--ink);font-weight:600;margin:12px 0 5px}
+.empty p{margin:0 0 14px;font-size:13px;max-width:430px;line-height:1.6}
+.empty p b{font-weight:600}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,18px);background:var(--ink);color:#fff;
+  border-radius:11px;padding:11px 17px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg);
+  opacity:0;pointer-events:none;transition:.2s;z-index:60}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+
+
+/* ===== v8: portal, delete, agreements ===== */
+.dr-actions{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}
+.btn-o.danger{color:#c0392b;border-color:#f3cccc}
+.btn-o.danger:hover{background:#fdf3f3}
+.danger-btn{background:#c0392b}
+.danger-btn:hover{background:#a93226}
+.rowact{text-align:right;white-space:nowrap}
+.mini{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);display:inline-grid;
+  place-items:center;color:var(--muted);background:#fff;margin-left:4px;vertical-align:middle}
+.mini:hover{background:var(--surface);color:var(--body)}
+.mini.go:hover{background:#eefbf3;border-color:#bbf0d0;color:var(--green-tx)}
+.mini.danger:hover{background:#fdf3f3;border-color:#f3cccc;color:#c0392b}
+.del-list{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:var(--surface)}
+.del-list>div{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--body);padding:4px 0}
+.del-list svg{color:#c0392b;flex:none}
+
+/* client portal */
+#portalLayer[hidden]{display:none!important}
+.pt{display:flex;height:100vh;background:#f6f5f3;overflow:hidden}
+.pt-side{width:262px;flex:none;background:#fff;border-right:1px solid #e8e5e0;padding:20px 16px 16px;
+  display:flex;flex-direction:column}
+.pt-brand{display:flex;align-items:center;gap:11px;margin-bottom:26px}
+.pt-logo{width:42px;height:42px;border-radius:12px;background:var(--logo);color:#fff;display:grid;
+  place-items:center;font-weight:700;font-size:14px;flex:none;overflow:hidden}
+.pt-logo img{width:100%;height:100%;object-fit:contain;padding:5px;background:#fff}
+.pt-brand b{display:block;font-size:14px;font-weight:600;line-height:1.25}
+.pt-brand span{display:block;font-size:11.5px;color:var(--muted)}
+.pt-nav{display:flex;flex-direction:column;gap:3px;flex:1}
+.pt-nav button{display:flex;align-items:center;gap:11px;height:40px;padding:0 12px;border-radius:10px;
+  font-size:13.5px;font-weight:500;color:#4b4f57;text-align:left;width:100%}
+.pt-nav button svg{color:#8b8f98;flex:none}
+.pt-nav button:hover{background:#f6f5f3}
+.pt-nav button.is-on{background:#f0efec;color:var(--ink);font-weight:600}
+.pt-nav button.is-on svg{color:var(--ink)}
+.pt-dot{width:7px;height:7px;border-radius:50%;background:#e0483d;margin-left:auto;flex:none}
+.pt-me{display:flex;align-items:center;gap:10px;padding:12px 4px;border-top:1px solid #eeece8;margin-top:10px}
+.pt-me b{display:block;font-size:13px;font-weight:600}
+.pt-me span{display:block;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;max-width:150px}
+.pt-exit{font-size:12px;color:var(--muted);padding:8px 4px;text-align:left;display:flex;align-items:center;gap:5px}
+.pt-exit:hover{color:var(--ink)}
+.pt-main{flex:1;overflow-y:auto}
+.pt-inner{max-width:800px;margin:0 auto;padding:36px 32px 60px}
+.pt-hero{margin-bottom:22px}
+.pt-eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#a09a90}
+.pt-hero h2{margin:7px 0 4px;font-size:32px;font-weight:600;letter-spacing:-.025em}
+.pt-hero p{margin:0;font-size:14px;color:var(--muted)}
+.pt-h{margin:0 0 20px;font-size:25px;font-weight:600;letter-spacing:-.02em}
+.pt-alert{display:flex;align-items:center;gap:13px;background:#fff;border:1px solid #e8e5e0;
+  border-left:3px solid var(--orange);border-radius:12px;padding:15px 17px;margin-bottom:14px}
+.pt-alert.bad{border-left-color:#e0483d}
+.pt-alert svg{color:var(--orange);flex:none}
+.pt-alert.bad svg{color:#e0483d}
+.pt-alert>div{flex:1;min-width:0}
+.pt-alert b{display:block;font-size:14px;font-weight:600;margin-bottom:2px}
+.pt-alert span{display:block;font-size:12.5px;color:var(--muted);line-height:1.5}
+.pt-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin-bottom:22px}
+.pt-card{background:#fff;border:1px solid #e8e5e0;border-radius:12px;padding:16px;text-align:left}
+.pt-card:hover{border-color:#d6d2cb;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+.pt-card-ic{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#f2f0ec;
+  color:#6b6459;margin-bottom:11px}
+.pt-card b{display:block;font-size:13.5px;font-weight:600;margin-bottom:2px}
+.pt-card>span:last-child{display:block;font-size:12px;color:var(--muted)}
+.pt-panel{background:#fff;border:1px solid #e8e5e0;border-radius:14px;padding:22px 24px;margin-bottom:14px}
+.pt-panel h3{margin:0 0 14px;font-size:15.5px;font-weight:600}
+.pt-steps{margin:0;padding:0;list-style:none;counter-reset:s}
+.pt-steps li{position:relative;padding:0 0 18px 34px;counter-increment:s}
+.pt-steps li::before{content:counter(s);position:absolute;left:0;top:-1px;width:23px;height:23px;
+  border-radius:50%;background:#f0efec;color:#9a948a;display:grid;place-items:center;font-size:11.5px;font-weight:700}
+.pt-steps li::after{content:"";position:absolute;left:11px;top:24px;bottom:2px;width:1px;background:#eeece8}
+.pt-steps li:last-child::after{display:none}
+.pt-steps li.done::before{content:"✓";background:#dff3e6;color:#157a4a}
+.pt-steps li.now::before{background:var(--ink);color:#fff}
+.pt-steps b{display:block;font-size:13.5px;font-weight:600;margin-bottom:2px}
+.pt-steps span{display:block;font-size:12.5px;color:var(--muted);line-height:1.55}
+.pt-agr-h{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+.pt-agr-h b{display:block;font-size:15px;font-weight:600}
+.pt-agr-h span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.pt-agr-h>div{flex:1;min-width:0}
+.pt-doc{max-height:340px;overflow-y:auto;border:1px solid #eeece8;border-radius:11px;padding:18px 20px;
+  background:#fbfaf9}
+.pt-doc h4{margin:16px 0 5px;font-size:12.5px;font-weight:700;letter-spacing:.02em}
+.pt-doc h4:first-child{margin-top:0}
+.pt-doc p{margin:0;font-size:12.5px;line-height:1.65;color:#4b4f57}
+.pt-sign{margin-top:16px;border-top:1px solid #eeece8;padding-top:16px}
+.pt-sign .inp{max-width:320px;font-family:Georgia,serif;font-size:17px;font-style:italic}
+.pt-sign .btn-dark{margin-top:12px}
+.pt-signed{display:flex;align-items:center;gap:11px;background:#f2faf5;border:1px solid #cdead9;
+  border-radius:11px;padding:13px 15px;margin-top:16px}
+.pt-signed svg{color:#157a4a;flex:none}
+.pt-signed>div{flex:1}
+.pt-signed b{display:block;font-size:13px;font-weight:600}
+.pt-signed span{display:block;font-size:11.5px;color:var(--muted);margin-top:1px}
+table.pt-lines{width:100%;border-collapse:collapse;margin-bottom:6px}
+.pt-lines td{padding:9px 0;border-bottom:1px solid #f2f0ec;font-size:13px;color:var(--body)}
+.pt-lines td:nth-child(2){width:50px;text-align:center;color:var(--muted)}
+.pt-lines td:last-child{width:110px;text-align:right;font-weight:600}
+.pt-tot{margin-top:12px}
+.pt-tot>div{display:flex;font-size:12.5px;padding:4px 0;color:var(--muted)}
+.pt-tot b{margin-left:auto;color:var(--body);font-weight:600;font-variant-numeric:tabular-nums}
+.pt-grand{border-top:1px solid #eeece8;margin-top:8px;padding-top:11px!important;font-size:14px!important;color:var(--ink)!important}
+.pt-grand b{font-size:20px;color:var(--ink)}
+.pt-pay{width:100%;justify-content:center;margin-top:16px;height:44px}
+.pt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px}
+.pt-photo{position:relative;margin:0;aspect-ratio:4/5;border-radius:10px;overflow:hidden;background:#eee}
+.pt-img{position:absolute;inset:0;background:linear-gradient(150deg,var(--a),var(--b))}
+.pt-grid.locked .pt-photo{filter:contrast(.93) saturate(.9)}
+.pt-grid.locked .pt-img{filter:blur(1px)}
+.pt-mark{position:absolute;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.62);
+  font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-align:center;
+  transform:rotate(-24deg);pointer-events:none;user-select:none;
+  text-shadow:0 1px 3px rgba(0,0,0,.35);line-height:2.6}
+.pt-grid.locked .pt-photo::after{content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(-24deg,transparent 0 46px,rgba(255,255,255,.09) 46px 48px)}
+.pt-photo,.pt-img{user-select:none;-webkit-user-drag:none}
+.pt-dl{position:absolute;right:7px;bottom:7px;width:28px;height:28px;border-radius:8px;
+  background:rgba(255,255,255,.94);display:grid;place-items:center;color:var(--ink);
+  box-shadow:0 1px 5px rgba(0,0,0,.18)}
+.pay-sum{border:1px solid var(--line);border-radius:11px;padding:14px 16px;background:var(--surface);margin-bottom:18px}
+.pay-sum>div{display:flex;font-size:12.5px;padding:4px 0;color:var(--muted)}
+.pay-sum b{margin-left:auto;color:var(--body);font-weight:600;font-variant-numeric:tabular-nums}
+.pay-grand{border-top:1px solid var(--line);margin-top:8px;padding-top:10px!important;font-size:14px!important;color:var(--ink)!important}
+.pay-grand b{font-size:19px;color:var(--ink)}
+.pay-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.pay-note{display:flex;align-items:flex-start;gap:7px;font-size:11.5px;color:var(--muted);
+  line-height:1.55;margin:16px 0 0}
+.pay-note svg{margin-top:1px;flex:none}
+@media (max-width:820px){.pt-side{display:none}.pt-inner{padding:24px 18px 48px}}
+
+/* ===== v7: chrome ===== */
+.top-search{position:relative}
+.search-drop{position:absolute;top:42px;left:0;width:392px;max-height:400px;overflow-y:auto;background:#fff;
+  border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);z-index:45;padding:6px}
+.sr{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:9px;text-align:left}
+.sr:hover{background:var(--surface)}
+.sr-k{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+  background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:2px 6px;flex:none;width:64px;text-align:center}
+.sr-t{min-width:0;flex:1}
+.sr-t b{display:block;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-t span{display:block;font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-empty{padding:16px;font-size:13px;color:var(--muted);text-align:center}
+body.sb-collapsed .sb{width:66px}
+body.sb-collapsed .sb-brand-tx,body.sb-collapsed .nav-item span:not(.nav-badge),
+body.sb-collapsed .ws b,body.sb-collapsed .ws .chev,body.sb-collapsed .nav-sec,
+body.sb-collapsed .storage,body.sb-collapsed .me-tx,body.sb-collapsed .me .chev,
+body.sb-collapsed .grp-kids,body.sb-collapsed .grp-head b,body.sb-collapsed #sbUsage{display:none}
+body.sb-collapsed .nav-item{justify-content:center;padding:0}
+body.sb-collapsed .sb-collapse{margin-left:0}
+body.sb-collapsed .sb-brand{justify-content:center}
+
+/* ===== v7: setup console ===== */
+.setup-hero{display:flex;gap:18px;align-items:flex-start;border:1px solid var(--line);border-radius:var(--r);
+  background:#fff;padding:16px 18px;margin-bottom:14px}
+.setup-hero b{display:block;font-size:15px;font-weight:600;margin-bottom:4px}
+.setup-hero span{display:block;font-size:12.5px;color:var(--muted);line-height:1.55}
+.setup-card{margin-bottom:14px}
+.setup-fields{padding:14px 18px 4px}
+.setup-fields .form-row{grid-template-columns:130px minmax(0,1fr)}
+.setup-list{padding:6px 18px 8px}
+.setup-note{padding:0 18px 4px;margin:6px 0 0}
+.setup-acts{display:flex;gap:8px;padding:12px 18px 16px;flex-wrap:wrap}
+.copyfield{display:flex;gap:7px;align-items:center;min-width:0}
+.copyfield code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:11.5px}
+.maprow{display:grid;grid-template-columns:96px 14px minmax(0,1fr);gap:8px;align-items:center;margin-bottom:8px}
+.maprow svg{color:var(--faint)}
+.mapcrm{font-size:12px;font-weight:600;color:var(--body);background:var(--surface-2);
+  border:1px solid var(--line);border-radius:7px;padding:6px 8px;text-align:center}
+.snippet{background:#0d1019;color:#d7dae1;border-radius:11px;padding:16px 18px;font-size:12px;
+  line-height:1.7;overflow-x:auto;margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre}
+
+/* ===== v7: packages ===== */
+.pkg{padding:15px 17px 16px;display:flex;flex-direction:column}
+.pkg-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.pkg-h b{display:block;font-size:14.5px;font-weight:600}
+.pkg-h span{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+.pkg-blurb{margin:0 0 13px;font-size:12.5px;color:var(--body);line-height:1.55}
+.pkg-lines{border-top:1px solid var(--line-2);padding-top:11px}
+.pkg-lines>div{display:flex;font-size:12.5px;padding:4px 0;color:var(--body)}
+.pkg-lines>div b{margin-left:auto;font-weight:500;font-variant-numeric:tabular-nums}
+.pkg-lines em{font-style:normal;font-size:10px;font-weight:700;color:var(--faint);
+  background:var(--surface-2);border-radius:4px;padding:1px 5px;margin-left:4px}
+.pkg-tot{border-top:1px solid var(--line-2);margin-top:11px;padding-top:11px}
+.pkg-tot>div{display:flex;font-size:12.5px;padding:3px 0;color:var(--muted)}
+.pkg-tot b{margin-left:auto;font-weight:600;color:var(--body);font-variant-numeric:tabular-nums}
+.pkg-grand{border-top:1px solid var(--line);margin-top:8px;padding-top:9px!important;font-size:13.5px!important;color:var(--ink)!important}
+.pkg-grand b{font-size:18px;color:var(--ink)}
+.pkg-meta{display:flex;flex-wrap:wrap;gap:5px;margin:13px 0 0}
+.pkg-acts{display:flex;gap:8px;margin-top:13px}
+
+/* ===== v3 additions ===== */
+/* login */
+.login-wrap{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) 400px;background:#f4f5f7}
+.login-card{display:flex;flex-direction:column;justify-content:center;padding:44px 8vw;background:#fff}
+.login-card h2{margin:0 0 8px;font-size:26px;font-weight:600;letter-spacing:-.02em}
+.login-sub{margin:0 0 22px;font-size:13.5px;color:var(--muted);line-height:1.6;max-width:420px}
+.login-brand{display:flex;align-items:center;gap:11px;margin-bottom:34px}
+.login-brand b{display:block;font-size:15px;font-weight:600}
+.login-brand span{display:block;font-size:12px;color:var(--muted)}
+.login-l{display:block;font-size:12.5px;font-weight:600;color:var(--body);margin:14px 0 6px}
+.login-card .inp{max-width:420px;height:42px}
+.code-inp{font-size:22px;letter-spacing:.32em;text-align:center;font-weight:600;max-width:220px!important;height:52px!important}
+.login-go{margin-top:20px;height:44px;max-width:420px;justify-content:center;width:100%}
+.login-err{color:#c0392b;font-size:12.5px;margin-top:10px;min-height:16px;max-width:420px}
+.login-meta{display:flex;gap:7px;align-items:flex-start;margin-top:18px;font-size:11.5px;color:var(--muted);
+  max-width:420px;line-height:1.5}
+.login-meta svg{margin-top:1px;flex:none}
+.login-alt{display:flex;gap:16px;margin-top:16px}
+.login-alt button{font-size:12.5px;color:var(--brand-a);font-weight:500;text-decoration:underline;text-underline-offset:3px}
+.remember{display:flex;gap:6px;flex-wrap:wrap}
+.rem{height:34px;padding:0 13px;border:1px solid var(--line);border-radius:9px;font-size:12.5px;font-weight:500;background:#fff}
+.rem.is-on{border-color:var(--brand-a);background:#f2f9fc;color:var(--brand-a);font-weight:600}
+.fake-mail{border:1px solid var(--line);border-radius:11px;padding:13px 15px;background:var(--surface);
+  margin-bottom:20px;max-width:460px}
+.fake-mail-h{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em;
+  color:var(--faint);text-transform:uppercase;margin-bottom:9px}
+.fake-mail b{display:block;font-size:13.5px;margin-bottom:5px}
+.fake-mail p{margin:0;font-size:12.5px;color:var(--body);line-height:1.55}
+.login-side{background:#0d1019;color:#fff;padding:44px 40px;display:flex;flex-direction:column;justify-content:center}
+.login-side h3{display:flex;align-items:center;gap:9px;margin:0 0 22px;font-size:15px;font-weight:600}
+.login-side ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:16px}
+.login-side li{font-size:13px;line-height:1.6;color:#b8bdc7;padding-left:16px;position:relative}
+.login-side li::before{content:"";position:absolute;left:0;top:8px;width:5px;height:5px;border-radius:50%;background:var(--brand-a)}
+.login-side li b{color:#fff;font-weight:600}
+.login-note{margin:26px 0 0;font-size:11.5px;color:#7d838f;line-height:1.6;border-top:1px solid #22262f;padding-top:18px}
+@media (max-width:900px){.login-wrap{grid-template-columns:1fr}.login-side{display:none}.login-card{padding:34px 22px}}
+
+/* invoice document */
+.inv-doc{border:1px solid var(--line);border-radius:12px;padding:30px 32px;background:#fff}
+.inv-top{display:flex;gap:20px;align-items:flex-start;padding-bottom:22px;border-bottom:2px solid var(--ink)}
+.inv-brand{display:flex;gap:13px;align-items:center;flex:1;min-width:0}
+.inv-logo{width:56px;height:56px;border-radius:12px;background:var(--logo);color:#fff;display:grid;
+  place-items:center;font-weight:700;font-size:17px;flex:none;overflow:hidden}
+.inv-logo img{width:100%;height:100%;object-fit:contain;background:#fff;padding:5px}
+.inv-brand b{display:block;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.inv-brand span{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.inv-meta{text-align:right;flex:none}
+.inv-meta b{display:block;font-size:19px;font-weight:600;margin:8px 0 4px;letter-spacing:-.01em}
+.inv-meta span{display:block;font-size:12px;color:var(--muted)}
+.inv-billto{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:20px 0 22px}
+.inv-billto b{display:block;font-size:14px;font-weight:600;margin-bottom:3px}
+.inv-billto span{display:block;font-size:12.5px;color:var(--muted);line-height:1.5}
+.inv-lbl{display:block;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--faint);
+  text-transform:uppercase;margin-bottom:7px}
+table.inv-lines{width:100%;border-collapse:collapse}
+.inv-lines th{text-align:left;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--faint);
+  text-transform:uppercase;padding:9px 0;border-bottom:1px solid var(--line)}
+.inv-lines td{padding:12px 0;border-bottom:1px solid var(--line-2);font-size:13px;color:var(--body)}
+.inv-tag{font-size:9.5px;font-weight:700;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:4px;padding:1px 5px;color:var(--muted);margin-left:5px;white-space:nowrap}
+.inv-foot{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:30px;padding-top:20px}
+.inv-notes p{margin:0;font-size:12px;color:var(--muted);line-height:1.6}
+table.inv-totals{width:100%;border-collapse:collapse}
+@media print{.inv-doc{border:0;padding:0}}
+
+/* invoice editor */
+.ei-h{margin:22px 0 10px;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--faint);text-transform:uppercase}
+.ei-grid{display:grid;grid-template-columns:minmax(0,1fr) 80px 120px 32px;gap:8px;margin-bottom:8px;align-items:center}
+.ei-grid-2{grid-template-columns:minmax(0,1fr) 120px 32px}
+.ei-head{font-size:11px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.ei-x{width:32px;height:38px;border-radius:8px;color:var(--faint);display:grid;place-items:center}
+.ei-x:hover{background:#fdeaea;color:#c0392b}
+.ei-add{display:flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1px dashed #d6d8dd;
+  border-radius:8px;font-size:12.5px;font-weight:500;color:var(--body);margin-top:2px}
+.ei-add:hover{border-color:var(--brand-a);color:var(--brand-a)}
+.ei-tot{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
+.ei-tot>div{display:flex;font-size:13px;padding:5px 0;color:var(--body)}
+.ei-tot b{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:600}
+.ei-grand{border-top:1px solid var(--line);margin-top:8px;padding-top:12px!important;font-size:16px!important}
+.ei-grand b{font-size:20px;font-weight:700;color:var(--ink)}
+.modal-wide{width:min(880px,100%)}
+
+/* setup checklist */
+.setup-step{display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line-2)}
+.setup-step:last-child{border-bottom:0}
+.setup-step>div{flex:1;min-width:0}
+.setup-step b{display:block;font-size:13px;font-weight:600}
+.setup-step span{display:block;font-size:11.5px;color:var(--muted);margin-top:2px;word-break:break-word}
+.setup-ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:none;
+  background:var(--surface-2);color:var(--faint)}
+.setup-step.done .setup-ic{background:var(--green-bg);color:var(--green-tx)}
+.acct-head{display:flex;align-items:center;gap:13px;padding:4px 0 2px}
+.acct-head b{display:block;font-size:19px;font-weight:600;letter-spacing:-.01em}
+.acct-head span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+
+/* faq */
+.faq{border-bottom:1px solid var(--line-2);padding:2px 0}
+.faq:last-child{border-bottom:0}
+.faq summary{display:flex;align-items:center;gap:10px;padding:13px 0;font-size:13.5px;font-weight:600;
+  cursor:pointer;list-style:none}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary svg{margin-left:auto;color:var(--faint);transition:transform .18s;flex:none}
+.faq[open] summary svg{transform:rotate(180deg)}
+.faq p{margin:0 0 15px;font-size:13px;color:var(--body);line-height:1.65;padding-right:26px}
+
+/* logo upload */
+.logo-drop{width:88px;height:88px;border:1.5px dashed #d6d8dd;border-radius:14px;display:grid;place-items:center;
+  cursor:pointer;background:var(--surface);color:var(--muted);font-weight:700;font-size:19px;overflow:hidden;flex:none}
+.logo-drop:hover{border-color:var(--brand-a);color:var(--brand-a)}
+.logo-drop img{width:100%;height:100%;object-fit:contain;padding:7px;background:#fff}
+
+/* ===== v2 additions ===== */
+.nav-item.locked{color:#a9aeb6}
+.nav-item.locked svg{color:#c3c7ce}
+.nav-item.locked .nav-badge{padding:1px 5px;display:grid;place-items:center}
+
+.p-new{background:#e4e4e4;color:#4b4f57}
+.p-talk{background:#c0d4fe;color:#1b4bb5}
+.p-consult{background:#fdd4be;color:#a1522a}
+.p-booked{background:#c2f4d9;color:#137a4a}
+.p-past{background:#e6ddfa;color:#5b3aa8}
+.p-lost{background:#fdeaea;color:#c0392b}
+.p-warn{background:#fef3c7;color:#92600e}
+
+/* page intro line */
+.lede{font-size:13px;color:var(--muted);margin:-4px 0 14px;line-height:1.55;max-width:760px}
+.lede b{color:var(--body);font-weight:600}
+
+/* clock bar */
+.clock{display:flex;align-items:center;gap:9px;padding:9px 12px;border:1px solid var(--line);
+  border-radius:11px;background:var(--surface);margin-bottom:14px;flex-wrap:wrap}
+.clock .lbl{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600}
+.clock .lbl svg{color:var(--brand-a)}
+.clock .val{font-size:12.5px;color:var(--body);font-variant-numeric:tabular-nums}
+.clock .sp{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.clock button{height:30px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:#fff;
+  font-size:12px;font-weight:600}
+.clock button:hover{background:#fff;border-color:#d6d8dd}
+.clock button.go{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* stat row */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:14px}
+.stat{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff}
+.stat span{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+.stat b{font-size:21px;font-weight:600;letter-spacing:-.02em}
+.stats-sm .stat b{font-size:17px}
+.stats-sm .stat em{display:block;margin:4px 0 0}
+.stat em{font-style:normal;font-size:12px;color:var(--muted);margin-left:5px}
+
+/* two column */
+.two{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;align-items:start}
+.two-wide{display:grid;grid-template-columns:300px minmax(0,1fr);gap:14px;align-items:start}
+
+/* rows */
+.rowi{display:flex;align-items:center;gap:11px;padding:12px 16px;border-bottom:1px solid var(--line-2)}
+.rowi:last-child{border-bottom:0}
+.rowi .tx{min-width:0;flex:1}
+.rowi .tx>b{display:block;font-size:13.5px;font-weight:600}
+.rowi .tx span{display:block;font-size:12px;color:var(--muted);margin-top:2px;line-height:1.45}
+.rowi .sp{margin-left:auto;display:flex;align-items:center;gap:7px;flex:none}
+.rowi.tap{width:100%;text-align:left}
+.rowi.tap:hover{background:#fcfcfd}
+
+/* cadence rail */
+.rail{display:flex;gap:0;overflow-x:auto;padding:4px 0 10px}
+.rail-s{flex:none;min-width:150px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+  background:#fff;margin-right:8px;position:relative}
+.rail-s.done{background:var(--surface);border-style:dashed}
+.rail-s.now{border-color:var(--brand-a);box-shadow:0 0 0 3px rgba(30,122,166,.1)}
+.rail-s .w{font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--faint);text-transform:uppercase}
+.rail-s b{display:block;font-size:12.5px;font-weight:600;margin:5px 0 4px}
+.rail-s .ch{display:flex;gap:4px;flex-wrap:wrap}
+.rail-s .ch span{font-size:9.5px;font-weight:700;border-radius:4px;padding:1px 5px}
+
+/* template builder */
+.tb{display:grid;grid-template-columns:250px minmax(0,1fr) 300px;gap:14px;align-items:start}
+.blk{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:9px;background:#fff}
+.blk-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.blk-h b{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--faint);text-transform:uppercase}
+.blk-h .sp{margin-left:auto;display:flex;gap:3px}
+.blk-h .sp button{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:var(--faint)}
+.blk-h .sp button:hover{background:var(--surface-2);color:var(--body)}
+.blk input,.blk textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+  font-size:13px;outline:0;background:#fff}
+.blk textarea{resize:vertical;min-height:64px;line-height:1.5}
+.blk input:focus,.blk textarea:focus{border-color:var(--brand-a)}
+.addblk{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.addblk button{display:flex;align-items:center;gap:5px;height:31px;padding:0 10px;border:1px dashed #d6d8dd;
+  border-radius:8px;font-size:12px;font-weight:500;color:var(--body)}
+.addblk button:hover{border-color:var(--brand-a);color:var(--brand-a)}
+.preview{border:1px solid var(--line);border-radius:var(--r);background:#fff;overflow:hidden;position:sticky;top:0}
+.preview-h{padding:11px 14px;border-bottom:1px solid var(--line);background:var(--surface);font-size:12px;
+  font-weight:600;color:var(--muted)}
+.preview-b{padding:20px;font-size:13.5px;line-height:1.6;color:#22262e;max-height:620px;overflow-y:auto}
+.preview-b h2{font-size:19px;margin:0 0 12px;font-weight:600;letter-spacing:-.01em}
+.preview-b p{margin:0 0 12px}
+.preview-b hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+.preview-b img{max-width:100%;border-radius:8px;margin:0 0 12px;display:block}
+.tpl-ph{height:110px;border:1px dashed #d6d8dd;border-radius:8px;display:grid;place-items:center;
+  color:var(--faint);font-size:12px;margin-bottom:12px;background:var(--surface)}
+.tpl-btn{display:inline-block;background:var(--ink);color:#fff;text-decoration:none;padding:10px 18px;
+  border-radius:8px;font-size:13px;font-weight:600;margin:2px 0 12px}
+.tpl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
+.tpl-grid span{aspect-ratio:1;background:linear-gradient(135deg,#e8eaee,#f6f7f9);border-radius:6px}
+
+/* forms */
+.form-row{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px 14px;align-items:center;margin-bottom:11px}
+.form-row>label{font-size:13px;color:var(--body);font-weight:500}
+.inp{width:100%;height:38px;border:1px solid var(--line);border-radius:9px;padding:0 11px;font-size:13px;
+  outline:0;background:#fff}
+.inp:focus{border-color:var(--brand-a)}
+select.inp{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b8f98' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
+
+/* usage meters */
+.meters{display:flex;flex-direction:column;gap:14px;padding:14px 18px 18px}
+.meter-t{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.meter-t b{font-size:13px;font-weight:600}
+.meter-t .sp{margin-left:auto;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meter-bar{height:6px;border-radius:3px;background:#eceef1;overflow:hidden}
+.meter-bar i{display:block;height:100%;border-radius:3px;background:var(--green)}
+.meter-bar.warn i{background:var(--orange)}
+.meter-bar.critical i{background:#e0483d}
+.warnbox{display:flex;gap:11px;align-items:flex-start;padding:13px 15px;border-radius:11px;
+  background:#fff7ed;border:1px solid #fed7aa;margin:0 0 14px}
+.warnbox.critical{background:#fef2f2;border-color:#fecaca}
+.warnbox svg{color:#c2410c;margin-top:1px;flex:none}
+.warnbox.critical svg{color:#b91c1c}
+.warnbox p{margin:0;font-size:13px;color:#7c2d12;line-height:1.55}
+.warnbox.critical p{color:#7f1d1d}
+.warnbox b{font-weight:600}
+.warnbox .sp{margin-left:auto;flex:none}
+.usage-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;border-radius:20px;
+  padding:2px 8px;background:#fef3c7;color:#92600e}
+.usage-chip.critical{background:#fee2e2;color:#b91c1c}
+
+/* modal */
+.modal-wrap{position:fixed;inset:0;display:grid;place-items:center;padding:24px;z-index:80;
+  opacity:0;pointer-events:none;transition:opacity .18s}
+.modal-wrap.on{opacity:1;pointer-events:auto}
+.modal-bg{position:absolute;inset:0;background:rgba(13,16,25,.36)}
+.modal{position:relative;background:#fff;border-radius:16px;width:min(620px,100%);max-height:86vh;
+  display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(13,16,25,.24);
+  transform:translateY(10px);transition:transform .18s}
+.modal-wrap.on .modal{transform:none}
+.modal-h{display:flex;align-items:center;gap:11px;padding:17px 20px;border-bottom:1px solid var(--line)}
+.modal-h b{font-size:16px;font-weight:600}
+.modal-h .sp{margin-left:auto}
+.modal-b{padding:18px 20px;overflow-y:auto}
+.modal-f{display:flex;gap:9px;padding:14px 20px;border-top:1px solid var(--line);background:var(--surface);
+  border-radius:0 0 16px 16px}
+.modal-f .sp{margin-left:auto;display:flex;gap:9px}
+
+/* chat */
+.chat{display:flex;flex-direction:column;gap:12px;max-height:340px;overflow-y:auto;padding:2px}
+.chat .q{align-self:flex-end;background:var(--ink);color:#fff;padding:10px 14px;border-radius:13px;
+  border-bottom-right-radius:4px;font-size:13px;max-width:82%;line-height:1.5}
+.chat .a{align-self:flex-start;background:var(--surface);border:1px solid var(--line);padding:11px 14px;
+  border-radius:13px;border-bottom-left-radius:4px;font-size:13px;max-width:92%;line-height:1.6;
+  white-space:pre-wrap}
+.chat .a.think{color:var(--muted);font-style:italic}
+.sugg{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.sugg button{height:30px;padding:0 11px;border:1px solid var(--line);border-radius:20px;font-size:12px;
+  font-weight:500;color:var(--body);background:#fff}
+.sugg button:hover{border-color:var(--brand-a);color:var(--brand-a)}
+
+/* misc */
+.tagx{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 9px;border-radius:20px;
+  font-size:11.5px;font-weight:600;background:var(--surface-2);border:1px solid var(--line);color:var(--body)}
+.hint{font-size:12px;color:var(--muted);line-height:1.55;margin:6px 0 0}
+.dropzone{border:1.5px dashed #d6d8dd;border-radius:11px;padding:22px;text-align:center;color:var(--muted);
+  font-size:13px;cursor:pointer;background:var(--surface)}
+.dropzone:hover,.dropzone.over{border-color:var(--brand-a);color:var(--brand-a);background:#f2f9fc}
+.split-list{display:flex;flex-direction:column;gap:2px}
+.split-list button{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:9px;font-size:13px;
+  text-align:left;width:100%;color:var(--body)}
+.split-list button:hover{background:var(--surface)}
+.split-list button.is-on{background:var(--surface-2);color:var(--ink);font-weight:600;
+  border:1px solid var(--line)}
+@media (max-width:1240px){.tb{grid-template-columns:1fr}.two,.two-wide{grid-template-columns:1fr}}
+
+@media (max-width:1240px){
+  .dash{grid-template-columns:minmax(0,1fr)}
+  .rep,.sa-grid{grid-template-columns:minmax(0,1fr)}
+  .dash-row{grid-template-columns:1fr 1fr}
+}
+@media (max-width:1000px){
+  .sb{position:fixed;z-index:70;height:100%;transform:translateX(-100%);transition:transform .2s}
+  .sb.open{transform:none}
+  .kpis,.dash-row{grid-template-columns:1fr}
+  .inbox{grid-template-columns:1fr}
+  .insight-cols{grid-template-columns:1fr 1fr;gap:16px 0}
+  .board{overflow-x:auto}
+  .col{min-width:262px;flex:0 0 262px}
+}
+@media (max-width:760px){
+  .top{padding:0 14px;gap:9px}
+  .top h1{font-size:17px}
+  .top-search,.top .btn-o{display:none}
+  .tool{padding:0 14px;overflow-x:auto;scrollbar-width:none}
+  .tool::-webkit-scrollbar{display:none}
+  .tool>*{flex:none}
+  .tool-right{margin-left:8px}
+  .view{padding:0 14px 22px}
+  .updated{display:none}
+  .rev-head{flex-direction:column;gap:10px}
+  .rev-range{margin-left:0;align-self:flex-start}
+  .insight-cols{grid-template-columns:1fr}
+  .insight-col{border-left:0;padding-bottom:14px}
+  .tbl-wrap{overflow-x:auto}
+  .tbl{min-width:760px}
+  .sa-acts{flex-wrap:wrap}
+  .bulk{left:14px;right:14px;transform:none;bottom:14px;overflow-x:auto}
+  .bulk.on{transform:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+</style>
+</head>
+<body>
+<div id="loginLayer"></div>
+<div class="app" id="appRoot" hidden>
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sb" id="sb">
+    <div class="sb-brand">
+      <div class="sb-tile">RL</div>
+      <div class="sb-brand-tx"><b id="sbBrandName">Reserve Legacy</b><span id="sbBrandSub">Platform admin</span></div>
+      <button class="sb-collapse" id="collapse" aria-label="Collapse sidebar"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button>
+    </div>
+
+    <button class="ws" id="wsBtn">
+      <span class="ws-av"></span>
+      <b id="sbWsName">All studios</b>
+      <span class="chev"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></span>
+    </button>
+
+    <div class="sb-scroll">
+      <nav class="nav" id="sbNav"></nav>
+      <div id="sbGroups"></div>
+    </div>
+
+    <div class="sb-foot">
+      <button class="nav-item" data-adminsettings><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg>
+        <span>Settings</span><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></button>
+      <button class="nav-item" data-adminhelp><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.3"/><path d="M12 17h.01"/></svg>
+        <span>Help Center</span><span class="chev"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></button>
+
+      <div id="sbUsage"></div>
+
+      <button class="me" data-signout>
+        <span class="me-av" style="background:#112166;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px">RL</span>
+        <span class="me-tx"><b>Platform team <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2f6df6" stroke-width="1.6"><path d="m12 2 2.2 1.6 2.7-.3 1 2.5 2.4 1.3-.6 2.6.6 2.6-2.4 1.3-1 2.5-2.7-.3L12 18l-2.2-1.6-2.7.3-1-2.5-2.4-1.3.6-2.6-.6-2.6 2.4-1.3 1-2.5 2.7.3Z" fill="#2f6df6"/><path d="m9.2 10.2 1.9 1.9 3.6-3.7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></b>
+          <span>ops@reservelegacy.com</span></span>
+        <span class="chev"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <header class="top">
+      <button class="icon-btn" id="burger" style="display:none" aria-label="Menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg></button>
+      <h1 id="pageTitle">Accounts</h1>
+      <div class="top-right">
+        <button class="icon-btn" id="bell" aria-label="Notifications"><span class="dot"></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 1 0-12 0c0 6-2.5 7.5-2.5 7.5h17S18 14.5 18 8.5"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg></button>
+        <div class="top-search"><div class="search-drop" id="searchDrop" hidden></div><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+          <input type="search" id="globalSearch" placeholder="Search studios, owners, domains…" aria-label="Search" autocomplete="off"></div>
+        <button class="btn-o" id="shareBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/></svg>Share</button>
+      </div>
+    </header>
+
+    <div class="tool" id="toolbar"></div>
+    <main class="view" id="view"></main>
+  </div>
+</div>
+
+<!-- ============ OVERLAYS ============ -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Contact record"></aside>
+<div class="toast" id="toast"></div>
+<div class="modal-wrap" id="modal"></div>
+
+<script>
+/* Reserve Legacy — Platform Admin console */
+
+
+/* ====================================================================
+   icons.js
+   ==================================================================== */
+
+const I = (n, s = 18) => {
+  const p = {
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    spark: '<path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M18.5 15.5 19 17l1.5.5L19 18l-.5 1.5L18 18l-1.5-.5L18 17Z"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13A4 4 0 0 1 16 11"/>',
+    camera: '<path d="M14.5 4h-5L8 6.5H4.5A1.5 1.5 0 0 0 3 8v10a1.5 1.5 0 0 0 1.5 1.5h15A1.5 1.5 0 0 0 21 18V8a1.5 1.5 0 0 0-1.5-1.5H16Z"/><circle cx="12" cy="12.5" r="3.5"/>',
+    book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
+    note: '<path d="M15 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M15 3v5h5"/>',
+    mail: '<rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="m3 7 8.2 5.5a1.5 1.5 0 0 0 1.6 0L21 7"/>',
+    chart: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M21 20H3"/>',
+    flow: '<rect x="3" y="3" width="6" height="5" rx="1.5"/><rect x="15" y="16" width="6" height="5" rx="1.5"/><path d="M6 8v6a4 4 0 0 0 4 4h5"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="m21 16-4.5-4.5L7 20"/>',
+    receipt: '<path d="M4 3h16v18l-2.5-1.5L15 21l-2.5-1.5L10 21l-2.5-1.5L5 21H4Z"/><path d="M8 8h8"/><path d="M8 12h6"/>',
+    cog: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/>',
+    help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.3"/><path d="M12 17h.01"/>',
+    bell: '<path d="M18 8.5a6 6 0 1 0-12 0c0 6-2.5 7.5-2.5 7.5h17S18 14.5 18 8.5"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>',
+    share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/>',
+    filter: '<path d="M3 5h18l-7 8v6l-4 2v-8Z"/>',
+    sort: '<path d="M7 4v16"/><path d="m3 8 4-4 4 4"/><path d="M17 20V4"/><path d="m13 16 4 4 4-4"/>',
+    group: '<circle cx="12" cy="12" r="2"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/>',
+    plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+    chevD: '<path d="m6 9 6 6 6-6"/>',
+    chevR: '<path d="m9 6 6 6-6 6"/>',
+    chevUD: '<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>',
+    sortY: '<path d="m7 15 5 4 5-4"/><path d="m7 9 5-4 5 4"/>',
+    check: '<path d="m5 13 4 4L19 7"/>',
+    checkC: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.2 2.4 2.4 4.6-4.9"/>',
+    x: '<path d="M6 6 18 18"/><path d="M18 6 6 18"/>',
+    list: '<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3.5 6h.01"/><path d="M3.5 12h.01"/><path d="M3.5 18h.01"/>',
+    kanban: '<rect x="3" y="4" width="6" height="16" rx="1.5"/><rect x="11" y="4" width="6" height="11" rx="1.5"/>',
+    timeline: '<path d="M4 7h10"/><path d="M4 12h16"/><path d="M4 17h7"/>',
+    gallery: '<rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="13" width="7" height="7" rx="1.5"/><rect x="12" y="4" width="9" height="16" rx="1.5"/>',
+    dl: '<path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/>',
+    up: '<path d="M12 20V8"/><path d="m7.5 12.5 4.5-4.5 4.5 4.5"/><path d="M4 4h16"/>',
+    hist: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v4h4"/><path d="M12 8v4.5l3 1.8"/>',
+    task: '<path d="M8.5 6H20"/><path d="M8.5 12H20"/><path d="M8.5 18H20"/><path d="m3 6 1.4 1.4L7 4.8"/><path d="m3 12 1.4 1.4L7 10.8"/><path d="m3 18 1.4 1.4L7 16.8"/>',
+    coin: '<circle cx="12" cy="12" r="9"/><path d="M12 7v10"/><path d="M14.6 9.4a2.6 2.6 0 0 0-2.6-1.4h-.4a2.2 2.2 0 0 0 0 4.4h.8a2.2 2.2 0 0 1 0 4.4H12a2.6 2.6 0 0 1-2.6-1.4"/>',
+    grip: '<circle cx="9" cy="6" r="1.3"/><circle cx="15" cy="6" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="18" r="1.3"/><circle cx="15" cy="18" r="1.3"/>',
+    dots: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>',
+    panel: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>',
+    minusSq: '<path d="M6 12h12"/>',
+    phone: '<path d="M5 3.5h3.2l1.6 4-2 1.2a12 12 0 0 0 5.5 5.5l1.2-2 4 1.6V17a2 2 0 0 1-2.2 2A15.5 15.5 0 0 1 3 6.7 2 2 0 0 1 5 3.5Z"/>',
+    msg: '<path d="M20 14.5a2.5 2.5 0 0 1-2.5 2.5H8l-4 3.5v-15A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5Z"/>',
+    cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/>',
+    eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>',
+    heart: '<path d="M12 20s-7.5-4.6-7.5-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7.5 2.7C19.5 15.4 12 20 12 20Z"/>',
+    bolt: '<path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12Z"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3.2 9h17.6"/><path d="M3.2 15h17.6"/><path d="M12 3a15 15 0 0 1 0 18"/><path d="M12 3a15 15 0 0 0 0 18"/>',
+    star: '<path d="m12 3.5 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.9l6-.9Z"/>',
+    link: '<path d="M10 13a4 4 0 0 0 5.7.4l2.6-2.6A4 4 0 0 0 12.6 5l-1.5 1.5"/><path d="M14 11a4 4 0 0 0-5.7-.4l-2.6 2.6A4 4 0 0 0 11.4 19l1.5-1.5"/>',
+    file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/>',
+    send: '<path d="M21 3 3 10.5l7 3 3 7Z"/><path d="m10 13.5 4-4"/>',
+    verified: '<path d="m12 2 2.2 1.6 2.7-.3 1 2.5 2.4 1.3-.6 2.6.6 2.6-2.4 1.3-1 2.5-2.7-.3L12 18l-2.2-1.6-2.7.3-1-2.5-2.4-1.3.6-2.6-.6-2.6 2.4-1.3 1-2.5 2.7.3Z" fill="currentColor" stroke="none"/><path d="m9.2 10.2 1.9 1.9 3.6-3.7" stroke="#fff" stroke-width="2"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5.3l3.2 1.9"/>',
+    shield: '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.4 7.5 9.5 4.4-1.1 7.5-4.9 7.5-9.5V6Z"/><path d="m9.2 12 2 2 3.6-3.8"/>',
+    tag: '<path d="M20.5 13.5 13 21l-9-9V4h8Z"/><circle cx="8.5" cy="8.5" r="1.3"/>',
+    lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    warn: '<path d="M10.3 3.9 2.5 17.5A2 2 0 0 0 4.2 20.5h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4.5"/><path d="M12 17h.01"/>',
+    build: '<rect x="4" y="7" width="7" height="13" rx="1"/><rect x="13" y="3" width="7" height="17" rx="1"/><path d="M4 20h16"/>'
+  }[n] || '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+};
+
+
+/* ====================================================================
+   common.js
+   ==================================================================== */
+
+const HOUR = 3600e3, DAY = 24 * HOUR;
+
+/* ---------- helpers ---------- */
+const AVC = ['#e08a5f', '#5a8dd6', '#7f6bd0', '#4aa789', '#d0698f', '#c99a3f', '#5f8fb0', '#8a8f9c'];
+const hash = s => { let h = 0; for (let i = 0; i < String(s).length; i++) h = (h * 31 + String(s).charCodeAt(i)) | 0; return Math.abs(h); };
+const avc = n => AVC[hash(n) % AVC.length];
+const initials = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const money = n => '$' + Math.round(n).toLocaleString('en-US');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtD = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const fmtDT = d => new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const fmtCap = n => n === Infinity ? 'Unlimited' : n.toLocaleString('en-US');
+function rel(ms) {
+  const a = Math.abs(ms), f = ms < 0 ? 'ago' : 'from now';
+  if (a < HOUR) return Math.max(1, Math.round(a / 60e3)) + ' min ' + f;
+  if (a < DAY) return Math.round(a / HOUR) + ' hr ' + f;
+  return Math.round(a / DAY) + ' day' + (Math.round(a / DAY) === 1 ? '' : 's') + ' ' + f;
+}
+
+
+function rng(seed) { let s = seed; return () => (s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; }
+const R = rng(20260829);
+
+/* shared clock */
+const CLOCK = { now: Date.parse('2026-08-29T08:00:00') };
+const now = () => CLOCK.now;
+
+/* shared audit trail */
+let AUDIT = [];
+function audit(action, detail, actor, severity = 'info') {
+  AUDIT.unshift({ at: now(), action, detail, actor: actor || 'system',
+    ip: '198.51.100.' + (20 + (hash(action) % 60)), device: 'Chrome · macOS', severity });
+  if (AUDIT.length > 500) AUDIT.pop();
+}
+
+
+/* ====================================================================
+   plans.js
+   ==================================================================== */
+
+/* ============================================================
+   Plan entitlements — transcribed from the comparison table
+   in pricing.html. "inc" = included, "addon" = paid add-on,
+   false = not on that plan, number/Infinity = a cap.
+   ============================================================ */
+const PLAN_ORDER = ['Launch', 'Brand', 'Scale', 'All In', 'Enterprise'];
+
+const FEATURES = [
+  { g: 'Photography website', k: 'customDesign', l: 'Custom design',            v: ['inc', 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'Photography website', k: 'galleries',    l: 'Client galleries',         v: [8, 20, Infinity, Infinity, Infinity], cap: true },
+  { g: 'Photography website', k: 'mobileBuild',  l: 'Mobile-first build',       v: ['inc', 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'Photography website', k: 'enquiryCapture', l: 'Enquiry capture',        v: ['inc', 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'Photography website', k: 'pageEditor',   l: 'Page editor',              v: ['inc', 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'Photography website', k: 'bookingFlow',  l: 'Booking and deposit flow', v: [false, false, 'inc', 'inc', 'inc'] },
+
+  { g: 'SEO & content', k: 'technicalSeo',  l: 'Technical SEO',              v: ['inc', 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'SEO & content', k: 'gbp',           l: 'Google Business Profile',    v: ['inc', 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'SEO & content', k: 'localSeo',      l: 'Local SEO programme',        v: [false, 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'SEO & content', k: 'venueContent',  l: 'Venue and location content', v: [false, 2, 4, 8, 8], cap: true, unit: '/ month' },
+  { g: 'SEO & content', k: 'aiSeo',         l: 'AI search optimization',     v: [false, 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'SEO & content', k: 'seoSpecialist', l: 'Dedicated SEO specialist',   v: [false, false, false, 'inc', 'inc'] },
+
+  { g: 'Reserve Legacy CRM', k: 'pipeline',  l: 'Enquiry pipeline',        v: [false, 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'Reserve Legacy CRM', k: 'contacts',  l: 'Contacts',                v: [1000, 3000, 10000, 50000, Infinity], cap: true },
+  { g: 'Reserve Legacy CRM', k: 'smartLists', l: 'Smart lists',            v: [false, 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'Reserve Legacy CRM', k: 'scoring',   l: 'Enquiry scoring',         v: [false, 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'Reserve Legacy CRM', k: 'invoicing', l: 'Contracts and invoicing', v: [false, false, 'inc', 'inc', 'inc'] },
+
+  { g: 'Follow-up', k: 'instantReply', l: 'Instant enquiry reply',            v: [false, 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'Follow-up', k: 'nurture',      l: 'Nurture sequences',                v: [false, 'addon', 'inc', 'inc', 'inc'] },
+  { g: 'Follow-up', k: 'textFollowUp', l: 'Text follow-up',                   v: [false, false, 'inc', 'inc', 'inc'] },
+  { g: 'Follow-up', k: 'anniversary',  l: 'Anniversary and season check-ins', v: [false, false, 'inc', 'inc', 'inc'] },
+  { g: 'Follow-up', k: 'reviews',      l: 'Review requests',                  v: [false, false, 'inc', 'inc', 'inc'] },
+
+  { g: 'Sales & storefront', k: 'store',       l: 'Print and album store',    v: [false, false, 'inc', 'inc', 'inc'] },
+  { g: 'Sales & storefront', k: 'downloads',   l: 'Digital downloads',        v: [false, false, 'inc', 'inc', 'inc'] },
+  { g: 'Sales & storefront', k: 'labFulfil',   l: 'Lab fulfilment integration', v: [false, false, 'inc', 'inc', 'inc'] },
+  { g: 'Sales & storefront', k: 'brandedApp',  l: 'Branded client app',       v: [false, false, 'addon', 'inc', 'inc'] },
+
+  { g: 'Marketing', k: 'paidAds',       l: 'Paid ads management',    v: [false, false, 'inc', 'inc', 'inc'] },
+  { g: 'Marketing', k: 'social',        l: 'Social media management', v: [false, false, false, 'inc', 'inc'] },
+  { g: 'Marketing', k: 'reportingCall', l: 'Monthly reporting call',  v: [false, false, 'inc', 'inc', 'inc'] },
+
+  { g: 'Team & support', k: 'seats',        l: 'Studio logins',           v: [1, 3, 6, 12, Infinity], cap: true },
+  { g: 'Team & support', k: 'onboarding',   l: 'Onboarding and launch',   v: ['inc', 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'Team & support', k: 'emailSupport', l: 'Email support',           v: ['inc', 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'Team & support', k: 'phoneSupport', l: 'Phone support',           v: [false, 'inc', 'inc', 'inc', 'inc'] },
+  { g: 'Team & support', k: 'success',      l: '1:1 success and support', v: [false, false, 'inc', 'inc', 'inc'] }
+];
+
+/* storage isn't in the table — scaled to the gallery allowance */
+const STORAGE_GB = { Launch: 250, Brand: 1000, Scale: 2000, 'All In': 5000, Enterprise: Infinity };
+
+const FEAT = Object.fromEntries(FEATURES.map(f => [f.k, f]));
+const planIdx = p => Math.max(0, PLAN_ORDER.indexOf(p || ACCOUNT.plan));
+
+/* value of a feature on the current plan */
+const featVal = (k, plan) => FEAT[k] ? FEAT[k].v[planIdx(plan)] : false;
+/* true when usable — an add-on counts as available but is flagged in the UI */
+const has = (k, plan) => { const v = featVal(k, plan); return v === 'inc' || v === 'addon' || (typeof v === 'number' && v > 0); };
+const isAddon = (k, plan) => featVal(k, plan) === 'addon';
+const cap = (k, plan) => { const v = featVal(k, plan); return typeof v === 'number' ? v : (v ? Infinity : 0); };
+
+/* the cheapest plan that includes a feature, for upgrade prompts */
+function firstPlanWith(k) {
+  const f = FEAT[k]; if (!f) return null;
+  for (let i = 0; i < PLAN_ORDER.length; i++) {
+    const v = f.v[i];
+    if (v === 'inc' || (typeof v === 'number' && v > 0)) return PLAN_ORDER[i];
+  }
+  return null;
+}
+const featLabel = v => v === 'inc' ? 'Included' : v === 'addon' ? 'Add-on'
+  : v === false ? 'Not included' : v === Infinity ? 'Unlimited' : v.toLocaleString('en-US');
+
+/* which modules a plan can open at all */
+const MODULE_GATE = {
+  today: null, leads: 'pipeline', customers: 'pipeline', shoots: 'pipeline', people: 'pipeline',
+  inbox: 'instantReply', followup: 'nurture', marketing: 'nurture',
+  galleries: null, invoices: 'invoicing', reports: 'pipeline', help: null, settings: null
+};
+
+
+/* ====================================================================
+   platform.js
+   ==================================================================== */
+
+/* ============================================================
+   Platform — Reserve Legacy's own layer above the CRM.
+   Every studio using the CRM is a tenant account here.
+   ============================================================ */
+
+const PLAN_PRICE = { Launch: 149, Brand: 349, Scale: 649, 'All In': 1149, Enterprise: 2400 };
+
+const ACCT_STATUS = {
+  Active: 'p-booked', Trialing: 'p-talk', 'Past due': 'p-warn',
+  Suspended: 'p-lost', Terminated: 'p-past'
+};
+
+/* subscription dunning ladder — days past due on the studio's own bill */
+const SUB_DUNNING = [
+  { day: 1,  action: 'notify', label: 'First notice',  to: 'billing' },
+  { day: 3,  action: 'notify', label: 'Second notice', to: 'billing' },
+  { day: 7,  action: 'notify', label: 'Warning — suspension in 14 days', to: 'billing+owner' },
+  { day: 14, action: 'notify', label: 'Final warning — suspension in 7 days', to: 'billing+owner+users' },
+  { day: 21, action: 'suspend', label: 'Account suspended', to: 'billing+owner+users' },
+  { day: 45, action: 'terminate', label: 'Account scheduled for termination', to: 'billing+owner' }
+];
+
+const STUDIO_NAMES = [
+  ['Willow & Ivy Photography', 'Dallas, TX', 'Scale'],
+  ['North Bank Collective', 'Austin, TX', 'All In'],
+  ['Hartley & Fen', 'Fort Worth, TX', 'Brand'],
+  ['Saltmarsh Studio', 'Houston, TX', 'Scale'],
+  ['Ember Lane Photo', 'Plano, TX', 'Launch'],
+  ['Kestrel & Co', 'San Antonio, TX', 'Brand'],
+  ['Marrow Street Studio', 'Nashville, TN', 'Scale'],
+  ['Quiet Harbour Films', 'Charleston, SC', 'All In'],
+  ['Bellwether Portraits', 'Frisco, TX', 'Brand'],
+  ['Gravel & Gold Photo', 'Waco, TX', 'Launch'],
+  ['Aster Field Studio', 'Denver, CO', 'Scale'],
+  ['Copperline Weddings', 'Tulsa, OK', 'Brand']
+];
+
+let TENANTS = [];
+let PLATFORM_EVENTS = [];
+let TENANT_SEQ = 1000;
+
+function platformLog(text, tenantId, kind = 'info') {
+  PLATFORM_EVENTS.unshift({ at: now(), text, tenantId, kind });
+  if (PLATFORM_EVENTS.length > 400) PLATFORM_EVENTS.pop();
+}
+
+const CLIENT_NAMES = ['Amelia Brooks','Jordan Vance','Sofia Delgado','Nathan Pike','Harper Quinn','Elena Marsh',
+  'Caleb Nunez','Ivy Thornton','Ruben Castillo','Maya Lindqvist','Owen Fairbanks','Talia Roswell','Desmond Clay',
+  'Nora Ashford','Felix Okonkwo','Rosalind Vega','Kai Sundberg','Beatrix Lowe','Wren Halloway','Theo Kingsley',
+  'Simone Baptiste','Hugo Danvers','Cassia Moreau','Delphine Carrow','Micah Sterling','Yasmin Haddad'];
+const CLIENT_SESSIONS = ['Wedding','Engagement','Portrait','Family','Senior','Newborn','Commercial','Event'];
+
+function seedClientPortals(studio, plan, rr, t0) {
+  const n = 4 + Math.floor(rr() * 9);
+  const dom = studio.toLowerCase().replace(/[^a-z]+/g, '') + '.com';
+  return Array.from({ length: n }, (_, i) => {
+    const nm = CLIENT_NAMES[(hash(studio) + i * 5) % CLIENT_NAMES.length];
+    const roll = rr();
+    const status = roll < .62 ? 'Active' : roll < .88 ? 'Invited' : 'Suspended';
+    const bal = roll < .5 ? 0 : Math.round(rr() * 4200);
+    return {
+      id: 'p' + i, name: nm,
+      email: nm.toLowerCase().replace(/\s+/g, '.') + '@' + ['gmail.com','outlook.com','icloud.com'][i % 3],
+      username: nm.toLowerCase().replace(/\s+/g, '.'),
+      url: 'portal.' + dom + '/' + nm.toLowerCase().replace(/\s+/g, '.'),
+      session: CLIENT_SESSIONS[Math.floor(rr() * CLIENT_SESSIONS.length)],
+      status,
+      passwordSet: status === 'Active',
+      createdAt: t0 - Math.floor(20 + rr() * 300) * DAY,
+      lastLogin: status === 'Active' ? t0 - Math.floor(rr() * 30) * DAY : null,
+      logins: status === 'Active' ? 1 + Math.floor(rr() * 22) : 0,
+      balance: bal,
+      agreementSigned: roll > .2,
+      galleryLocked: bal > 0
+    };
+  });
+}
+
+function seedTenants(t0) {
+  const rr = rng(77021);
+  TENANTS = STUDIO_NAMES.map(([name, city, plan], i) => {
+    const seats = cap('seats', plan) === Infinity ? 20 : cap('seats', plan);
+    const contactCap = cap('contacts', plan);
+    const status = i === 4 ? 'Past due' : i === 9 ? 'Suspended' : i === 10 ? 'Trialing' : 'Active';
+    const dpd = status === 'Past due' ? 9 : status === 'Suspended' ? 24 : 0;
+    return {
+      id: 'RL-' + (++TENANT_SEQ),
+      name, city, plan, status,
+      owner: { name: ['Lauren Hart', 'Dana Iyer', 'Ross Hartley', 'Nia Salt', 'Emmett Lane', 'Cora Kestrel',
+        'Jude Marrow', 'Pia Harbour', 'Tom Bell', 'Gil Gold', 'Ana Aster', 'Rae Copper'][i],
+        email: ['lauren', 'dana', 'ross', 'nia', 'emmett', 'cora', 'jude', 'pia', 'tom', 'gil', 'ana', 'rae'][i] + '@' +
+          name.toLowerCase().replace(/[^a-z]+/g, '') + '.com' },
+      billingEmail: 'billing@' + name.toLowerCase().replace(/[^a-z]+/g, '') + '.com',
+      mrr: PLAN_PRICE[plan],
+      startedAt: t0 - Math.floor(60 + rr() * 700) * DAY,
+      seatsUsed: Math.min(seats, 1 + Math.floor(rr() * seats)),
+      seatsCap: seats,
+      contacts: Math.floor(contactCap * (0.15 + rr() * 0.8)),
+      contactCap,
+      galleries: Math.floor(4 + rr() * 40),
+      sends30: Math.floor(200 + rr() * 3000),
+      replies30: Math.floor(20 + rr() * 300),
+      bookings30: Math.floor(rr() * 14),
+      revenue30: Math.floor(4000 + rr() * 42000),
+      lastActive: t0 - Math.floor(rr() * 5) * DAY,
+      pastDueDays: dpd,
+      subDueAt: t0 - dpd * DAY,
+      dunning: [],
+      suspendedAt: status === 'Suspended' ? t0 - 3 * DAY : null,
+      email: {
+        provider: 'Brevo',
+        sender: 'studio@' + name.toLowerCase().replace(/[^a-z]+/g, '') + '.com',
+        domain: name.toLowerCase().replace(/[^a-z]+/g, '') + '.com',
+        spf: i !== 5, dkim: i !== 5, dmarc: i < 8,
+        apiKeySet: i !== 5, dailyCap: 20000,
+        status: i === 5 ? 'Needs DNS' : 'Verified'
+      },
+      sms: {
+        provider: 'Twilio',
+        number: '+1 (' + (214 + i) + ') 555-0' + (100 + i * 7),
+        messagingServiceSid: 'MG' + (hash(name) % 1e8).toString().padStart(8, '0') + 'a1b2c3',
+        brandRegistered: i !== 3 && i !== 5,
+        campaignRegistered: i !== 3 && i !== 5 && i !== 7,
+        status: (i === 3 || i === 5) ? 'Brand pending' : i === 7 ? 'Campaign pending' : 'Registered'
+      },
+      stripe: {
+        mode: 'Connected account',
+        accountId: i === 5 || i === 9 ? '' : 'acct_1Qx' + (hash(name) % 1e6).toString().padStart(6, '0'),
+        onboarded: i !== 5 && i !== 9,
+        chargesEnabled: i !== 5 && i !== 9 && i !== 3,
+        payoutsEnabled: i !== 5 && i !== 9 && i !== 3,
+        platformFeePct: 0,
+        statementDescriptor: name.toUpperCase().replace(/[^A-Z ]/g, '').slice(0, 22),
+        methods: ['Card', 'Apple Pay', 'Google Pay'],
+        webhookSet: i !== 5 && i !== 9
+      },
+      forms: {
+        key: 'wf_live_' + (hash(name) % 1e8).toString(16).padStart(8, '0'),
+        domains: i === 5 ? [] : [name.toLowerCase().replace(/[^a-z]+/g, '') + '.com'],
+        autoEnrol: true, notifyOwner: true,
+        mapping: { name: 'full_name', email: 'email', phone: 'phone', session: 'session_type', date: 'event_date', message: 'message' },
+        received30: Math.floor(rr() * 90)
+      },
+      store: {
+        enabled: has('store', plan),
+        provider: 'Stripe Checkout',
+        webhookSet: has('store', plan) && i !== 3,
+        autoCreateCustomer: true,
+        orders30: has('store', plan) ? Math.floor(rr() * 40) : 0
+      },
+      clients: seedClientPortals(name, plan, rr, t0),
+      notes: ''
+    };
+  });
+  TENANTS[0].id = 'RL-1001';
+  platformLog('Platform snapshot loaded', null);
+}
+
+/* ---------- provisioning ---------- */
+function createTenant(d) {
+  const slug = d.name.toLowerCase().replace(/[^a-z]+/g, '');
+  const t = {
+    id: 'RL-' + (++TENANT_SEQ),
+    name: d.name, city: d.city || '', plan: d.plan, status: 'Trialing',
+    owner: { name: d.ownerName, email: d.ownerEmail },
+    billingEmail: d.billingEmail || d.ownerEmail,
+    mrr: PLAN_PRICE[d.plan],
+    startedAt: now(), seatsUsed: 1,
+    seatsCap: cap('seats', d.plan) === Infinity ? 20 : cap('seats', d.plan),
+    contacts: 0, contactCap: cap('contacts', d.plan), galleries: 0,
+    sends30: 0, replies30: 0, bookings30: 0, revenue30: 0,
+    lastActive: now(), pastDueDays: 0, subDueAt: now() + 30 * DAY, dunning: [], suspendedAt: null,
+    email: {
+      provider: 'Brevo', sender: d.sender || ('studio@' + slug + '.com'),
+      domain: d.domain || (slug + '.com'),
+      spf: false, dkim: false, dmarc: false, apiKeySet: !!d.brevoKey, dailyCap: 20000,
+      status: 'Needs DNS'
+    },
+    sms: {
+      provider: 'Twilio', number: d.number || '', messagingServiceSid: '',
+      brandRegistered: false, campaignRegistered: false, status: 'Not started'
+    },
+    stripe: {
+      mode: 'Connected account', accountId: '', onboarded: false, chargesEnabled: false,
+      payoutsEnabled: false, platformFeePct: 0,
+      statementDescriptor: d.name.toUpperCase().replace(/[^A-Z ]/g, '').slice(0, 22),
+      methods: ['Card', 'Apple Pay', 'Google Pay'], webhookSet: false
+    },
+    forms: {
+      key: 'wf_live_' + Math.random().toString(16).slice(2, 10),
+      domains: d.domain ? [d.domain] : [], autoEnrol: true, notifyOwner: true,
+      mapping: { name: 'full_name', email: 'email', phone: 'phone', session: 'session_type', date: 'event_date', message: 'message' },
+      received30: 0
+    },
+    store: { enabled: has('store', d.plan), provider: 'Stripe Checkout', webhookSet: false, autoCreateCustomer: true, orders30: 0 },
+    notes: d.notes || ''
+  };
+  TENANTS.unshift(t);
+  platformLog(`Account created — ${t.name} on ${t.plan}`, t.id, 'create');
+  audit('platform.account.created', `${t.name} (${t.id}) created on ${t.plan}`, 'platform@reservelegacy.com');
+  return t;
+}
+function setTenantStatus(t, status, why) {
+  const from = t.status;
+  t.status = status;
+  if (status === 'Suspended') t.suspendedAt = now();
+  if (status === 'Active') { t.suspendedAt = null; t.pastDueDays = 0; t.dunning = []; t.subDueAt = now() + 30 * DAY; }
+  platformLog(`${t.name} — ${from} → ${status}${why ? ' (' + why + ')' : ''}`, t.id,
+    status === 'Suspended' || status === 'Terminated' ? 'warn' : 'info');
+  audit('platform.account.status', `${t.name} moved ${from} → ${status}`, 'platform@reservelegacy.com',
+    status === 'Terminated' ? 'critical' : 'warn');
+}
+
+/* email + SMS provisioning steps, mirroring what Brevo and Twilio actually need */
+function stripeSetupSteps(t) {
+  return [
+    { k: 'account', l: 'Stripe account connected', done: !!t.stripe.accountId,
+      hint: t.stripe.accountId || 'Send the studio a Connect onboarding link' },
+    { k: 'onboarded', l: 'Onboarding completed', done: t.stripe.onboarded,
+      hint: 'Business details, bank account and identity verified by Stripe' },
+    { k: 'charges', l: 'Charges enabled', done: t.stripe.chargesEnabled, hint: 'They can take card payments' },
+    { k: 'payouts', l: 'Payouts enabled', done: t.stripe.payoutsEnabled, hint: 'Money reaches their own bank account' },
+    { k: 'webhookSet', l: 'Webhooks pointed at us', done: t.stripe.webhookSet,
+      hint: 'invoice.paid, checkout.session.completed, charge.refunded' }
+  ];
+}
+function formSetupSteps(t) {
+  return [
+    { k: 'key', l: 'Intake endpoint issued', done: !!t.forms.key, hint: formEndpoint(t) },
+    { k: 'domains', l: 'Website domain allowed', done: t.forms.domains.length > 0,
+      hint: t.forms.domains.join(', ') || 'Posts are rejected until a domain is allowed' },
+    { k: 'mapping', l: 'Form fields mapped', done: !!t.forms.mapping.email,
+      hint: 'Their field names → CRM fields' },
+    { k: 'autoEnrol', l: 'Follow-up starts on submission', done: t.forms.autoEnrol,
+      hint: 'Email and text go out the moment the form is filled in' }
+  ];
+}
+function storeSetupSteps(t) {
+  return [
+    { k: 'enabled', l: 'Store on their plan', done: t.store.enabled,
+      hint: t.store.enabled ? 'Print and album store included' : 'Starts on ' + firstPlanWith('store') },
+    { k: 'webhookSet', l: 'Purchase webhook connected', done: t.store.webhookSet,
+      hint: 'A paid order creates or converts a customer in their CRM' },
+    { k: 'autoCreateCustomer', l: 'Buyers become customers', done: t.store.autoCreateCustomer,
+      hint: 'Matched on email, then phone — an existing lead is converted, not duplicated' }
+  ];
+}
+const formEndpoint = t => 'https://in.reservelegacy.com/f/' + t.forms.key;
+function stripeStatus(t) {
+  const s = stripeSetupSteps(t);
+  return s.every(x => x.done) ? 'Live' : t.stripe.accountId ? 'Onboarding' : 'Not started';
+}
+function formsStatus(t) { return formSetupSteps(t).every(x => x.done) ? 'Live' : t.forms.domains.length ? 'Partial' : 'Not started'; }
+function storeStatus(t) { return !t.store.enabled ? 'Not on plan' : storeSetupSteps(t).every(x => x.done) ? 'Live' : 'Pending'; }
+
+function setupProgress(t) {
+  const all = [...emailSetupSteps(t), ...smsSetupSteps(t), ...stripeSetupSteps(t), ...formSetupSteps(t),
+    ...(t.store.enabled ? storeSetupSteps(t) : [])];
+  const done = all.filter(s => s.done).length;
+  return { done, total: all.length, pct: Math.round(done / all.length * 100) };
+}
+
+function emailSetupSteps(t) {
+  return [
+    { k: 'sender', l: 'Sender address chosen', done: !!t.email.sender, hint: t.email.sender || 'Pick the address everything sends from' },
+    { k: 'key', l: 'Brevo API key connected', done: t.email.apiKeySet, hint: 'Transactional + campaign scopes' },
+    { k: 'spf', l: 'SPF record published', done: t.email.spf, hint: `v=spf1 include:spf.brevo.com ~all on ${t.email.domain}` },
+    { k: 'dkim', l: 'DKIM record published', done: t.email.dkim, hint: `mail._domainkey.${t.email.domain}` },
+    { k: 'dmarc', l: 'DMARC policy published', done: t.email.dmarc, hint: `v=DMARC1; p=quarantine; rua=mailto:dmarc@${t.email.domain}` }
+  ];
+}
+function smsSetupSteps(t) {
+  return [
+    { k: 'number', l: 'Twilio number purchased', done: !!t.sms.number, hint: t.sms.number || 'Local number in the studio area code' },
+    { k: 'svc', l: 'Messaging service created', done: !!t.sms.messagingServiceSid, hint: t.sms.messagingServiceSid || 'Groups the number for sending' },
+    { k: 'brand', l: '10DLC brand registered', done: t.sms.brandRegistered, hint: 'EIN, legal name and address — takes 1–3 days' },
+    { k: 'campaign', l: '10DLC campaign approved', done: t.sms.campaignRegistered, hint: 'Use case: customer care and appointment reminders' }
+  ];
+}
+function emailStatus(t) { const s = emailSetupSteps(t); return s.every(x => x.done) ? 'Verified' : s.some(x => x.done) ? 'Needs DNS' : 'Not started'; }
+function smsStatus(t) {
+  const s = smsSetupSteps(t);
+  if (s.every(x => x.done)) return 'Registered';
+  if (!t.sms.brandRegistered) return t.sms.number ? 'Brand pending' : 'Not started';
+  return 'Campaign pending';
+}
+
+/* ---------- subscription dunning ---------- */
+function subscriptionCopy(t, step) {
+  const d = t.pastDueDays;
+  if (step.action === 'suspend') return {
+    subject: `${t.name} — Reserve Legacy account suspended`,
+    body: `The subscription for ${t.name} is ${d} days past due, so the account has been suspended. Sign-in is blocked for all ${t.seatsUsed} logins and automated sending has stopped. Nothing has been deleted — your contacts, galleries and sequences are exactly where you left them. Settle the balance and the account is back within minutes.`
+  };
+  if (step.action === 'terminate') return {
+    subject: `${t.name} — account scheduled for termination`,
+    body: `The subscription for ${t.name} is ${d} days past due. The account is scheduled for termination and data export will close 14 days from today. If you want your data, reply now and we will get you an export regardless of the balance.`
+  };
+  if (step.day >= 14) return {
+    subject: `Final warning — ${t.name} suspends in 7 days`,
+    body: `The subscription for ${t.name} is ${d} days past due. Unless it is settled, the account suspends in 7 days and every login stops working. We would much rather sort it out — reply and we will work something out.`
+  };
+  if (step.day >= 7) return {
+    subject: `${t.name} — payment ${d} days past due`,
+    body: `The Reserve Legacy subscription for ${t.name} is ${d} days past due. If it stays unpaid the account suspends 21 days after the due date. Card on file may just need updating.`
+  };
+  return {
+    subject: `${t.name} — subscription payment missed`,
+    body: `We could not take payment for the Reserve Legacy subscription for ${t.name}. Most of the time it is an expired card. Update it and nothing else changes.`
+  };
+}
+function runSubscriptionDunning() {
+  TENANTS.forEach(t => {
+    if (t.status === 'Terminated' || t.status === 'Trialing') return;
+    if (now() <= t.subDueAt) return;
+    t.pastDueDays = Math.floor((now() - t.subDueAt) / DAY);
+    if (t.pastDueDays > 0 && t.status === 'Active') setTenantStatus(t, 'Past due', 'payment missed');
+    SUB_DUNNING.forEach(step => {
+      if (t.pastDueDays < step.day) return;
+      if (t.dunning.some(x => x.day === step.day)) return;
+      const msg = subscriptionCopy(t, step);
+      const to = [t.billingEmail];
+      if (step.to.includes('owner')) to.push(t.owner.email);
+      if (step.to.includes('users')) to.push(`all ${t.seatsUsed} logins`);
+      t.dunning.push({ day: step.day, at: now(), label: step.label, to, subject: msg.subject, body: msg.body });
+      platformLog(`${t.name} — ${step.label} sent to ${to.join(', ')}`, t.id, step.action === 'suspend' ? 'warn' : 'info');
+      if (step.action === 'suspend' && t.status !== 'Suspended') setTenantStatus(t, 'Suspended', 'non-payment');
+      if (step.action === 'terminate' && t.status !== 'Terminated') setTenantStatus(t, 'Terminated', 'non-payment');
+    });
+  });
+}
+
+/* ---------- platform rollups ---------- */
+function platformStats() {
+  const live = TENANTS.filter(t => t.status !== 'Terminated');
+  return {
+    accounts: TENANTS.length,
+    active: TENANTS.filter(t => t.status === 'Active').length,
+    trialing: TENANTS.filter(t => t.status === 'Trialing').length,
+    pastDue: TENANTS.filter(t => t.status === 'Past due').length,
+    suspended: TENANTS.filter(t => t.status === 'Suspended').length,
+    mrr: live.filter(t => t.status === 'Active' || t.status === 'Past due').reduce((s, t) => s + t.mrr, 0),
+    atRisk: TENANTS.filter(t => t.status === 'Past due' || t.status === 'Suspended').reduce((s, t) => s + t.mrr, 0),
+    seats: live.reduce((s, t) => s + t.seatsUsed, 0),
+    contacts: live.reduce((s, t) => s + t.contacts, 0),
+    sends30: live.reduce((s, t) => s + t.sends30, 0),
+    bookings30: live.reduce((s, t) => s + t.bookings30, 0),
+    revenue30: live.reduce((s, t) => s + t.revenue30, 0),
+    needsSetup: live.filter(t => setupProgress(t).pct < 100).length,
+    portals: live.reduce((s, t) => s + t.clients.length, 0),
+    portalsActive: live.reduce((s, t) => s + t.clients.filter(c => c.status === 'Active').length, 0),
+    portalsInvited: live.reduce((s, t) => s + t.clients.filter(c => c.status === 'Invited').length, 0),
+    portalsSuspended: live.reduce((s, t) => s + t.clients.filter(c => c.status === 'Suspended').length, 0),
+    clientOwed: live.reduce((s, t) => s + t.clients.reduce((x, c) => x + c.balance, 0), 0),
+    stripeLive: live.filter(t => stripeStatus(t) === 'Live').length,
+    formsLive: live.filter(t => formsStatus(t) === 'Live').length,
+    formFills30: live.reduce((s, t) => s + t.forms.received30, 0),
+    orders30: live.reduce((s, t) => s + t.store.orders30, 0)
+  };
+}
+const tenantHealth = t => {
+  const use = t.contactCap === Infinity ? 0 : t.contacts / t.contactCap;
+  const idle = (now() - t.lastActive) / DAY;
+  if (t.status === 'Suspended' || t.status === 'Terminated') return { l: 'Critical', c: '#c0392b' };
+  if (t.status === 'Past due' || idle > 14) return { l: 'At risk', c: '#e08a5f' };
+  if (use > 0.9) return { l: 'Near cap', c: '#c99a3f' };
+  return { l: 'Healthy', c: '#16a34a' };
+};
+
+
+/* ====================================================================
+   adminviews.js
+   ==================================================================== */
+
+/* ============================================================
+   Reserve Legacy — platform admin console (standalone app)
+   Runs separately from any studio CRM.
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+const OPS = { name: 'Platform team', email: 'ops@reservelegacy.com' };
+const ADM_AUTH = { stage: 'password', pending: null, session: null, trusted: [], inbox: [], failures: 0, lockedUntil: 0 };
+let ADM_REMEMBER = '7d';
+const REMEMBER_OPTIONS = [
+  { k: 'none', l: 'Just this once', ms: 0 }, { k: '1d', l: '1 day', ms: DAY },
+  { k: '7d', l: '7 days', ms: 7 * DAY }, { k: '30d', l: '30 days', ms: 30 * DAY }
+];
+const genCode = () => String(100000 + Math.floor(Math.random() * 900000));
+
+function renderAdminLogin() {
+  const p = ADM_AUTH.pending, mail = ADM_AUTH.inbox[0];
+  $('#loginLayer').innerHTML = `
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-brand"><div class="sb-tile" style="width:44px;height:44px">RL</div>
+        <div><b>Reserve Legacy</b><span>Platform admin</span></div></div>
+      ${ADM_AUTH.stage === 'password' ? `
+        <h2>Platform sign-in</h2>
+        <p class="login-sub">This console manages every studio account. It is separate from any studio CRM and no studio login can reach it.</p>
+        <label class="login-l">Reserve Legacy email</label>
+        <input class="inp" id="lgEmail" type="email" value="ops@reservelegacy.com">
+        <label class="login-l">Password</label>
+        <input class="inp" id="lgPass" type="password" value="correct-horse-battery">
+        <div id="lgErr" class="login-err"></div>
+        <button class="btn-dark login-go" data-dologin>${I('lock', 15)}Continue</button>
+        <div class="login-meta">${I('shield', 13)} Two-step sign-in, 30-minute idle timeout, and every action written to the audit log.</div>`
+      : `
+        <h2>Check your email</h2>
+        <p class="login-sub">We sent a six-digit code to <b>${esc(OPS.email)}</b>. It expires in 10 minutes.</p>
+        ${mail ? `<div class="fake-mail"><div class="fake-mail-h">${I('mail', 14)} Inbox — ${esc(mail.to)}</div>
+          <b>${esc(mail.subject)}</b><p>${esc(mail.body)}</p></div>` : ''}
+        <label class="login-l">Verification code</label>
+        <input class="inp code-inp" id="lgCode" inputmode="numeric" maxlength="6" placeholder="000000">
+        <label class="login-l" style="margin-top:14px">Remember this device</label>
+        <div class="remember">${REMEMBER_OPTIONS.map((o, i) =>
+          `<button class="rem${i === 2 ? ' is-on' : ''}" data-rem="${o.k}">${o.l}</button>`).join('')}</div>
+        <div id="lgErr" class="login-err"></div>
+        <button class="btn-dark login-go" data-docode>${I('check', 15)}Verify and sign in</button>
+        <div class="login-alt"><button data-backlogin>Use another account</button></div>`}
+    </div>
+    <div class="login-side">
+      <h3>${I('shield', 17)} Separation of duties</h3>
+      <ul>
+        <li><b>Different application.</b> The admin console is a separate app with its own sign-in. A studio owner cannot reach it from their CRM.</li>
+        <li><b>Plans are ours to set.</b> No studio can change its own plan, seats or limits. They request; we action it here.</li>
+        <li><b>Two-factor is mandatory</b> on every platform login, with trusted devices that expire.</li>
+        <li><b>Every action is logged</b> — account creation, plan changes, suspensions, terminations and provisioning.</li>
+      </ul>
+      <p class="login-note">These are the access-control and change-management controls a SOC 2 audit looks for. Enforcement belongs on the server; the report comes from the auditor.</p>
+    </div>
+  </div>`;
+  setTimeout(() => { const f = $('#lgCode') || $('#lgEmail'); if (f) f.focus(); }, 60);
+}
+
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on');
+  clearTimeout(window.__tt); window.__tt = setTimeout(() => t.classList.remove('on'), 2600); }
+function modal(title, body, footer, size) {
+  $('#modal').innerHTML = `<div class="modal-bg" data-mclose></div>
+    <div class="modal${size === 'wide' ? ' modal-wide' : ''}"><div class="modal-h"><b>${title}</b>
+      <span class="sp"><button class="icon-btn" data-mclose>${I('x', 16)}</button></span></div>
+      <div class="modal-b">${body}</div>${footer ? `<div class="modal-f">${footer}</div>` : ''}</div>`;
+  $('#modal').classList.add('on');
+}
+const closeModal = () => $('#modal').classList.remove('on');
+const st = (l, v, s) => `<div class="stat"><span>${l}</span><b>${v}</b><em>${esc(s)}</em></div>`;
+function clockBar() {
+  return `<div class="clock"><span class="lbl">${I('clock', 15)}Platform clock</span>
+    <span class="val">${new Date(now()).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+    <span class="sp"><button data-adv="1d">+1 day</button><button data-adv="1w">+1 week</button>
+      <button data-adv="1m" class="go">${I('bolt', 13)} +30 days</button></span></div>`;
+}
+function advance(ms) { CLOCK.now += ms; runSubscriptionDunning(); }
+
+/* ============================ ADMIN PORTAL ============================ */
+
+function renderAdminSidebar() {
+  const s = platformStats();
+  const items = [['overview', 'Accounts', 'build'], ['portals', 'Client portals', 'users'],
+    ['setup', 'Setup queue', 'cog'], ['billing', 'Billing & dunning', 'receipt'], ['audit', 'Audit log', 'file']];
+  const badge = { setup: s.needsSetup, billing: s.pastDue + s.suspended, portals: s.portalsSuspended };
+  $('#sbNav').innerHTML = items.map(([k, l, ic]) => `
+    <button class="nav-item${ADMIN.view === k && !ADMIN.tenantId ? ' is-on' : ''}" data-aview="${k}">
+      ${I(ic)}<span>${l}</span>${badge[k] ? `<span class="nav-badge">${badge[k]}</span>` : ''}</button>`).join('');
+  $('#sbGroups').innerHTML = `
+    <div class="grp"><div class="grp-head">
+      <span class="grp-sq" style="background:#7f6bd0">${I('minusSq', 12)}</span><b>Needs attention</b></div>
+      <div class="grp-kids">${TENANTS.filter(t => t.status === 'Past due' || t.status === 'Suspended' ||
+        emailStatus(t) !== 'Verified' || smsStatus(t) !== 'Registered').slice(0, 7)
+        .map(t => `<button data-tenant="${t.id}">${esc(t.name)}</button>`).join('') || '<button>All clear</button>'}</div></div>
+    <div class="grp"><div class="grp-head">
+      <span class="grp-sq" style="background:#16a34a">${I('minusSq', 12)}</span><b>Platform</b></div>
+      <div style="padding:6px 10px;font-size:11.5px;color:var(--muted);line-height:1.9">
+        <div style="display:flex"><span>MRR</span><b style="margin-left:auto;color:var(--ink)">${money(s.mrr)}</b></div>
+        <div style="display:flex"><span>At risk</span><b style="margin-left:auto;color:#c0392b">${money(s.atRisk)}</b></div>
+        <div style="display:flex"><span>Accounts</span><b style="margin-left:auto;color:var(--ink)">${s.accounts}</b></div>
+        <div style="display:flex"><span>Seats</span><b style="margin-left:auto;color:var(--ink)">${s.seats}</b></div>
+      </div></div>`;
+}
+
+function renderAdmin() {
+  renderAdminSidebar();
+  const s = platformStats();
+  $('#pageTitle').textContent = 'Reserve Legacy — platform';
+  $('#toolbar').innerHTML = `
+    <button class="btn-ai" data-ai>${I('spark', 16)}Ask AI</button>
+    <button class="btn-dark" data-newtenant>${I('plus', 16)}New CRM account</button>
+    <div class="tool-right">
+      <button class="btn-o" data-rundunning>${I('bolt', 15)}Run billing cycle</button>
+      <button class="btn-o" data-signout>${I('chevR', 15)}Sign out</button>
+    </div>`;
+  const box = $('#view'); box.scrollTop = 0;
+  if (ADMIN.tenantId) return adminTenant(box);
+  if (ADMIN.view === 'audit') return adminAudit(box);
+  if (ADMIN.view === 'portals') return adminPortals(box);
+  if (ADMIN.view === 'setup') return adminSetup(box);
+  if (ADMIN.view === 'billing') return adminBilling(box);
+
+  box.innerHTML = `
+  <p class="lede">Every studio running on Reserve Legacy. Create accounts, provision their Brevo sender and Twilio number, watch usage, and chase subscriptions that stop paying.</p>
+  ${clockBar()}
+  <div class="stats">
+    ${st('Accounts', s.accounts, `${s.active} active · ${s.trialing} trialing`)}
+    ${st('MRR', money(s.mrr), 'across billing accounts')}
+    ${st('At risk', money(s.atRisk), `${s.pastDue} past due · ${s.suspended} suspended`)}
+    ${st('Seats in use', s.seats, 'logins across all studios')}
+    ${st('Contacts stored', s.contacts.toLocaleString('en-US'), 'platform wide')}
+    ${st('Sends, 30 days', s.sends30.toLocaleString('en-US'), 'email and SMS')}
+  </div>
+
+  ${s.needsSetup ? `<div class="warnbox">${I('warn', 18)}
+    <p><b>${s.needsSetup} accounts have unfinished sending setup.</b> Until Brevo DNS verifies and the Twilio 10DLC campaign is approved, their follow-up and marketing cannot send.</p>
+    <span class="sp"><button class="btn-o" data-adminfilter="setup">Show them</button></span></div>` : ''}
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <colgroup><col style="width:19%"><col style="width:8%"><col style="width:10%"><col style="width:8%"><col style="width:8%">
+        <col style="width:13%"><col style="width:11%"><col style="width:12%"><col style="width:11%"></colgroup>
+      <thead><tr><th>Studio</th><th>Plan</th><th>Status</th><th>MRR</th><th>Seats</th><th>Contacts</th>
+        <th>Email</th><th>SMS</th><th>Health</th></tr></thead>
+      <tbody>${TENANTS.map(t => {
+    const h = tenantHealth(t), es = emailStatus(t), ss = smsStatus(t);
+    return `<tr data-tenant="${t.id}">
+      <td><div class="cell-b"><span class="logo-sq" style="background:${avc(t.name)}">${initials(t.name)}</span>
+        <b>${esc(t.name)}</b></div></td>
+      <td style="color:var(--body)">${t.plan}</td>
+      <td><span class="pill ${ACCT_STATUS[t.status]}">${t.status}</span></td>
+      <td style="font-weight:600">${money(t.mrr)}</td>
+      <td style="color:var(--body)">${t.seatsUsed}/${t.seatsCap}</td>
+      <td style="color:var(--body)">${t.contacts.toLocaleString('en-US')} / ${fmtCap(t.contactCap)}</td>
+      <td><span class="pill ${es === 'Verified' ? 'p-booked' : 'p-warn'}">${es}</span></td>
+      <td><span class="pill ${ss === 'Registered' ? 'p-booked' : 'p-warn'}">${ss}</span></td>
+      <td><span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px">
+        <i style="width:7px;height:7px;border-radius:50%;background:${h.c}"></i>${h.l}</span></td></tr>`;
+  }).join('')}</tbody></table>
+  </div>
+
+  <section class="card" style="margin-top:14px">
+    <div class="card-h"><h3>Platform activity</h3></div>
+    <div style="margin-top:8px;max-height:320px;overflow-y:auto">
+      ${PLATFORM_EVENTS.slice(0, 25).map(e => `<div class="rowi">
+        <span class="sig-ic" style="background:${e.kind === 'warn' ? '#fdeaea' : e.kind === 'create' ? '#e7f7ee' : 'var(--surface-2)'};
+          color:${e.kind === 'warn' ? '#c0392b' : e.kind === 'create' ? 'var(--green-tx)' : 'var(--muted)'}">${I(e.kind === 'warn' ? 'warn' : 'build', 15)}</span>
+        <span class="tx"><b style="font-weight:500;font-size:13px">${esc(e.text)}</b><span>${fmtDT(e.at)}</span></span></div>`).join('')
+    || '<div class="empty"><b>Nothing yet</b><p>Run the billing cycle to see dunning fire.</p></div>'}
+    </div>
+  </section>`;
+}
+
+function adminTenant(box) {
+  const t = TENANTS.find(x => x.id === ADMIN.tenantId); if (!t) { ADMIN.tenantId = null; return renderAdmin(); }
+  const h = tenantHealth(t), es = emailSetupSteps(t), ss = smsSetupSteps(t);
+  const tabs = ['Overview', 'Setup', 'Client portals', 'Billing', 'Usage'];
+  box.innerHTML = `
+  <button class="btn-o" style="margin-bottom:14px" data-backadmin>${I('chevR', 14)} All accounts</button>
+  <div class="acct-head">
+    <span class="logo-sq" style="background:${avc(t.name)};width:44px;height:44px;border-radius:12px;font-size:15px">${initials(t.name)}</span>
+    <div style="flex:1"><b>${esc(t.name)}</b><span>${esc(t.id)} · ${esc(t.city)} · ${esc(t.owner.name)} &lt;${esc(t.owner.email)}&gt;</span></div>
+    <span class="pill ${ACCT_STATUS[t.status]}">${t.status}</span>
+    <span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;margin-left:8px">
+      <i style="width:7px;height:7px;border-radius:50%;background:${h.c}"></i>${h.l}</span>
+  </div>
+  <div class="dr-tabs" style="border:0;padding:12px 0 16px">
+    ${tabs.map(x => `<button data-atab="${x}"${x === ADMIN.tab ? ' class="is-on"' : ''}>${x}</button>`).join('')}
+  </div>
+  ${ADMIN.tab === 'Overview' ? `
+    <div class="stats">
+      ${st('Plan', t.plan, money(t.mrr) + ' / month')}
+      ${st('Seats', `${t.seatsUsed}/${t.seatsCap}`, 'logins in use')}
+      ${st('Contacts', t.contacts.toLocaleString('en-US'), 'of ' + fmtCap(t.contactCap))}
+      ${st('Customer since', fmtD(t.startedAt), Math.round((now() - t.startedAt) / DAY) + ' days')}
+      ${st('Last active', rel(t.lastActive - now()), 'any login')}
+    </div>
+    <div class="two">
+      <section class="card"><div class="card-h"><h3>Account actions</h3></div>
+        <div style="padding:14px 18px 18px;display:flex;flex-direction:column;gap:9px">
+          ${t.status !== 'Active' ? `<button class="btn-dark" data-tstatus="Active">${I('check', 15)}Reactivate account</button>` : ''}
+          ${t.status !== 'Suspended' && t.status !== 'Terminated' ? `<button class="btn-o" data-tstatus="Suspended">${I('lock', 15)}Suspend — blocks all logins and sending</button>` : ''}
+          ${t.status !== 'Terminated' ? `<button class="btn-o" style="color:#c0392b;border-color:#f5c6c6" data-tstatus="Terminated">${I('x', 15)}Terminate account</button>` : ''}
+          <button class="btn-o" data-tplan="${t.id}">${I('cog', 15)}Change plan</button>
+          <p class="hint">Suspending blocks sign-in and stops automated sending. Nothing is deleted — reactivating restores the account in minutes. Termination closes data export after 14 days.</p>
+        </div></section>
+      <section class="card"><div class="card-h"><h3>Contacts on file</h3></div>
+        <div style="margin-top:8px">
+          <div class="rowi">${I('users', 16)}<span class="tx"><b>${esc(t.owner.name)}</b><span>Owner · ${esc(t.owner.email)}</span></span></div>
+          <div class="rowi">${I('receipt', 16)}<span class="tx"><b>Billing</b><span>${esc(t.billingEmail)}</span></span></div>
+          <div class="rowi">${I('mail', 16)}<span class="tx"><b>Sends from</b><span>${esc(t.email.sender)}</span></span></div>
+          <div class="rowi">${I('msg', 16)}<span class="tx"><b>Texts from</b><span>${esc(t.sms.number || 'not provisioned')}</span></span></div>
+        </div></section>
+    </div>`
+    : ADMIN.tab === 'Setup' ? adminSetupTab(t)
+  : ADMIN.tab === 'Client portals' ? adminTenantPortals(t)
+  : ADMIN.tab === 'Billing' ? `
+    <div class="stats">
+      ${st('Subscription', money(t.mrr), 'per month')}
+      ${st('Status', t.status, t.pastDueDays ? t.pastDueDays + ' days past due' : 'in good standing')}
+      ${st('Next charge', fmtD(t.subDueAt), t.pastDueDays ? 'missed' : 'on file')}
+      ${st('Lifetime', money(t.mrr * Math.max(1, Math.round((now() - t.startedAt) / (30 * DAY)))), 'billed to date')}
+    </div>
+    <section class="card">
+      <div class="card-h"><h3>Suspension ladder</h3>
+        <div class="sp"><button class="btn-o" data-rundunning>${I('bolt', 14)}Run billing cycle</button></div></div>
+      <div style="padding:12px 18px 18px">
+        ${SUB_DUNNING.map(s2 => {
+      const done = t.dunning.find(d => d.day === s2.day);
+      const due = t.pastDueDays >= s2.day;
+      return `<div class="setup-step ${done ? 'done' : ''}">
+            <span class="setup-ic">${I(done ? 'check' : s2.action === 'suspend' || s2.action === 'terminate' ? 'warn' : 'clock', 14)}</span>
+            <div><b>Day ${s2.day} — ${esc(s2.label)}</b>
+              <span>${done ? 'Sent ' + fmtDT(done.at) + ' to ' + esc(done.to.join(', ')) : due ? 'Due now' : 'Not reached'}</span></div>
+            ${done ? `<span class="pill p-booked">Sent</span>` : due ? `<span class="pill p-warn">Pending</span>` : ''}</div>`;
+    }).join('')}
+        <p class="hint" style="margin-top:12px">Notices go to the billing address first, then the owner, then every login on the account before suspension.
+        Suspension is automatic at 21 days past due; termination is scheduled at 45.</p>
+      </div></section>`
+    : `
+    <div class="stats">
+      ${st('Sends, 30 days', t.sends30.toLocaleString('en-US'), 'email and SMS')}
+      ${st('Replies, 30 days', t.replies30.toLocaleString('en-US'), Math.round(t.replies30 / Math.max(1, t.sends30) * 100) + '% reply rate')}
+      ${st('Bookings, 30 days', t.bookings30, 'closed in the CRM')}
+      ${st('Client revenue', money(t.revenue30), 'invoiced by the studio')}
+      ${st('Galleries', t.galleries, 'of ' + fmtCap(cap('galleries', t.plan)))}
+      ${st('Contacts', t.contacts.toLocaleString('en-US'), Math.round(t.contacts / (t.contactCap === Infinity ? t.contacts : t.contactCap) * 100) + '% of cap')}
+    </div>
+    <section class="card"><div class="card-h"><h3>Capacity</h3></div>
+      <div class="meters">
+        ${[['Contacts', t.contacts, t.contactCap], ['Seats', t.seatsUsed, t.seatsCap],
+      ['Galleries', t.galleries, cap('galleries', t.plan)]].map(([l, u, c2]) => {
+        const pct = c2 === Infinity ? 0 : Math.min(100, Math.round(u / c2 * 100));
+        const lvl = pct >= 95 ? 'critical' : pct >= 80 ? 'warn' : 'ok';
+        return `<div><div class="meter-t"><b>${l}</b>
+            ${lvl !== 'ok' ? `<span class="usage-chip ${lvl === 'critical' ? 'critical' : ''}">${I('warn', 11)}${pct}%</span>` : ''}
+            <span class="sp">${u.toLocaleString('en-US')} of ${fmtCap(c2)}</span></div>
+            <div class="meter-bar ${lvl}"><i style="width:${pct}%"></i></div></div>`;
+      }).join('')}
+        <p class="hint">An account near its contact cap is an upgrade conversation, not a problem.</p>
+      </div></section>`}`;
+}
+
+function openNewTenant() {
+  modal('New CRM account', `
+    <div class="form-row"><label>Studio name</label><input class="inp" id="ntName" placeholder="Hartley &amp; Fen"></div>
+    <div class="form-row"><label>City</label><input class="inp" id="ntCity" placeholder="Fort Worth, TX"></div>
+    <div class="form-row"><label>Owner name</label><input class="inp" id="ntOwner" placeholder="Ross Hartley"></div>
+    <div class="form-row"><label>Owner email</label><input class="inp" id="ntEmail" placeholder="ross@hartleyandfen.com"></div>
+    <div class="form-row"><label>Billing email</label><input class="inp" id="ntBilling" placeholder="billing@hartleyandfen.com"></div>
+    <div class="form-row"><label>Plan</label><select class="inp" id="ntPlan">
+      ${PLAN_ORDER.map(p => `<option${p === "Scale" ? " selected" : ""}>${p} — ${money(PLAN_PRICE[p])}/mo</option>`).join("")}</select></div>
+    <h4 class="ei-h">Sending setup</h4>
+    <p class="hint" style="margin:-4px 0 10px">Every account sends email through Brevo and text through Twilio. Fill what you have now — the rest is a checklist on the account.</p>
+    <div class="form-row"><label>Sending domain</label><input class="inp" id="ntDomain" placeholder="hartleyandfen.com"></div>
+    <div class="form-row"><label>Sender address</label><input class="inp" id="ntSender" placeholder="studio@hartleyandfen.com"></div>
+    <div class="form-row"><label>Twilio number</label><input class="inp" id="ntNumber" placeholder="+1 (817) 555-0142"></div>
+    <label class="chk"><span class="cbx" id="ntKey" data-cbx>${I('check', 11)}</span>Brevo API key already connected</label>`,
+    `<div class="sp"><button class="btn-o" data-mclose>Cancel</button>
+      <button class="btn-dark" data-savetenant>${I('check', 15)}Create account</button></div>`, 'wide');
+}
+
+
+/* ---------- admin sub-views ---------- */
+function adminSetup(box) {
+  const rows = TENANTS.filter(t => emailStatus(t) !== 'Verified' || smsStatus(t) !== 'Registered');
+  box.innerHTML = `<p class="lede">Accounts that cannot send yet. Brevo needs DNS on the studio's own domain; Twilio needs a 10DLC brand and campaign before carriers will deliver a single text.</p>
+  ${clockBar()}
+  ${rows.length ? rows.map(t => `
+    <section class="card" style="margin-bottom:12px">
+      <div class="card-h"><h3>${esc(t.name)}</h3><div class="sp">
+        <span class="pill ${emailStatus(t) === 'Verified' ? 'p-booked' : 'p-warn'}">Email: ${emailStatus(t)}</span>
+        <span class="pill ${smsStatus(t) === 'Registered' ? 'p-booked' : 'p-warn'}">SMS: ${smsStatus(t)}</span>
+        <button class="btn-o" data-tenant="${t.id}">Open</button></div></div>
+      <div style="padding:10px 18px 16px">
+        ${[...emailSetupSteps(t), ...smsSetupSteps(t)].filter(s => !s.done).map(s =>
+          `<div class="setup-step"><span class="setup-ic">${I('clock', 14)}</span>
+            <div><b>${esc(s.l)}</b><span>${esc(s.hint)}</span></div></div>`).join('')}
+      </div></section>`).join('')
+    : `<div class="card empty">${I('check', 30)}<b>Every account can send</b><p>Brevo and Twilio are finished everywhere.</p></div>`}`;
+}
+function adminBilling(box) {
+  const risk = TENANTS.filter(t => t.status === 'Past due' || t.status === 'Suspended' || t.status === 'Terminated');
+  const s = platformStats();
+  box.innerHTML = `<p class="lede">Subscriptions that stopped paying. Notices go to billing, then the owner, then every login. Suspension is automatic at 21 days past due, termination is scheduled at 45.</p>
+  ${clockBar()}
+  <div class="stats">
+    ${st('MRR at risk', money(s.atRisk), `${risk.length} accounts`)}
+    ${st('Past due', s.pastDue, 'still have access')}
+    ${st('Suspended', s.suspended, 'logins blocked')}
+    ${st('Healthy MRR', money(s.mrr - s.atRisk), 'paying on time')}
+  </div>
+  <div style="display:flex;margin-bottom:14px"><button class="btn-dark" data-rundunning>${I('bolt', 15)}Run billing cycle</button></div>
+  ${risk.length ? risk.map(t => `
+    <section class="card" style="margin-bottom:12px">
+      <div class="card-h"><h3>${esc(t.name)}</h3><div class="sp">
+        <span class="pill ${ACCT_STATUS[t.status]}">${t.status}</span>
+        <span style="font-size:12.5px;color:var(--muted)">${t.pastDueDays} days past due · ${money(t.mrr)}/mo</span>
+        <button class="btn-o" data-tenant="${t.id}">Open</button></div></div>
+      <div style="padding:10px 18px 16px">
+        ${t.dunning.length ? t.dunning.map(d => `<div class="setup-step done">
+          <span class="setup-ic">${I('mail', 14)}</span>
+          <div><b>Day ${d.day} — ${esc(d.label)}</b><span>${fmtDT(d.at)} → ${esc(d.to.join(', '))}</span></div></div>`).join('')
+        : '<p class="hint">No notices sent yet. Run the billing cycle.</p>'}
+      </div></section>`).join('')
+    : `<div class="card empty">${I('check', 30)}<b>Everyone is paid up</b><p>No account is past due.</p></div>`}`;
+}
+function adminAudit(box) {
+  box.innerHTML = `<p class="lede">Every sign-in, failure, lockout, role change and platform action. This is the record a SOC 2 auditor asks for; it is append-only and exportable.</p>
+  ${clockBar()}
+  <div class="tbl-wrap"><table class="tbl">
+    <colgroup><col style="width:16%"><col style="width:18%"><col style="width:24%"><col style="width:22%"><col style="width:12%"><col style="width:8%"></colgroup>
+    <thead><tr><th>When</th><th>Action</th><th>Detail</th><th>Actor</th><th>Source</th><th>Level</th></tr></thead>
+    <tbody>${AUDIT.slice(0, 60).map(a => `<tr>
+      <td style="color:var(--body)">${fmtDT(a.at)}</td>
+      <td><code style="font-size:11.5px;background:var(--surface-2);padding:2px 6px;border-radius:5px">${esc(a.action)}</code></td>
+      <td style="color:var(--body)">${esc(a.detail)}</td>
+      <td style="color:var(--body)">${esc(a.actor)}</td>
+      <td style="color:var(--muted);font-size:12px">${esc(a.ip)}</td>
+      <td><span class="pill ${a.severity === 'critical' ? 'p-lost' : a.severity === 'warn' ? 'p-warn' : 'p-booked'}">${a.severity}</span></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+
+/* ============================ EVENTS ============================ */
+document.addEventListener('click', e => {
+  const h = s => e.target.closest(s); let x;
+
+  if (h('[data-dologin]')) {
+    const em = $('#lgEmail').value, pw = $('#lgPass').value;
+    if (!/@reservelegacy\.com$/i.test(em.trim()) || !pw || pw.length < 8) {
+      audit('auth.login.failed', `Failed platform sign-in for ${em}`, em, 'warn');
+      $('#lgErr').textContent = 'Platform access requires a reservelegacy.com account.'; return;
+    }
+    const trusted = ADM_AUTH.trusted.find(t => t.expiresAt > now());
+    if (trusted) { ADM_AUTH.session = { startedAt: now(), method: 'trusted' };
+      audit('auth.login.trusted', 'Signed in on a trusted device', em); return enterAdmin(); }
+    const code = genCode();
+    ADM_AUTH.pending = { code, expiresAt: now() + 10 * 60e3, attempts: 0 };
+    ADM_AUTH.inbox.unshift({ at: now(), to: OPS.email, subject: `${code} is your platform sign-in code`,
+      body: `Your verification code is ${code}. It expires in 10 minutes. This attempt came from 198.51.100.42, Chrome on macOS.` });
+    ADM_AUTH.stage = 'code'; audit('auth.mfa.sent', 'Platform verification code emailed', em);
+    return renderAdminLogin();
+  }
+  if ((x = h('[data-rem]'))) { ADM_REMEMBER = x.dataset.rem; $$('.rem').forEach(b => b.classList.remove('is-on')); x.classList.add('is-on'); return; }
+  if (h('[data-docode]')) {
+    const p = ADM_AUTH.pending;
+    if (!p || $('#lgCode').value.trim() !== p.code) {
+      audit('auth.mfa.failed', 'Wrong platform verification code', OPS.email, 'warn');
+      $('#lgErr').textContent = 'That code is not right.'; return;
+    }
+    const opt = REMEMBER_OPTIONS.find(o => o.k === ADM_REMEMBER);
+    if (opt.ms) { ADM_AUTH.trusted = [{ label: 'Chrome · macOS', expiresAt: now() + opt.ms, duration: opt.l }];
+      audit('auth.device.trusted', `Device remembered for ${opt.l}`, OPS.email); }
+    ADM_AUTH.session = { startedAt: now(), method: 'mfa' };
+    audit('auth.login.success', 'Signed in to the platform console', OPS.email);
+    return enterAdmin();
+  }
+  if (h('[data-backlogin]')) { ADM_AUTH.stage = 'password'; return renderAdminLogin(); }
+  if (h('[data-signout]')) { audit('auth.logout', 'Signed out', OPS.email); ADM_AUTH.session = null;
+    ADM_AUTH.stage = 'password'; $('#appRoot').hidden = true; $('#loginLayer').hidden = false; return renderAdminLogin(); }
+
+  if (h('#bell')) return openNotifications();
+  if (h('#wsBtn')) return openWorkspace();
+  if (h('#shareBtn')) {
+    const link = 'https://admin.reservelegacy.com/' + (ADMIN.tenantId || ADMIN.view);
+    if (navigator.clipboard) navigator.clipboard.writeText(link).catch(() => {});
+    return toast('Link copied. Only reservelegacy.com logins can open it.');
+  }
+  if (h('#collapse')) { document.body.classList.toggle('sb-collapsed'); return; }
+  if (h('[data-adminsettings]')) return openAdminSettings();
+  if (h('[data-adminhelp]')) return openAdminHelp();
+  if (h('[data-ai]')) return openAI();
+  if ((x = h('[data-aiq]'))) return adminAsk(x.dataset.aiq);
+  if (h('[data-aisend]')) { const val = $('#aiInput').value; $('#aiInput').value = ''; return adminAsk(val); }
+  if (h('[data-forgetdev]')) { ADM_AUTH.trusted = []; audit('auth.device.revoked', 'All remembered devices revoked', OPS.email, 'warn'); closeModal(); return toast('Revoked. A code is required next time.'); }
+  if ((x = h('[data-hit]'))) { const hit = SEARCH_HITS[+x.dataset.hit]; $('#searchDrop').hidden = true; $('#globalSearch').value = ''; return hit && hit.act(); }
+  if ((x = h('[data-toast]'))) return toast(x.dataset.toast);
+  if (!e.target.closest('.top-search')) { const d = $('#searchDrop'); if (d) d.hidden = true; }
+  if (h('[data-mclose]')) return closeModal();
+  if ((x = h('[data-adv]'))) {
+    advance({ '1d': DAY, '1w': 7 * DAY, '1m': 30 * DAY }[x.dataset.adv]);
+    toast('Clock advanced. Billing cycle run.'); return renderAdmin();
+  }
+  if ((x = h('[data-aview]'))) { ADMIN.view = x.dataset.aview; ADMIN.tenantId = null; return renderAdmin(); }
+  if ((x = h('[data-tenant]'))) { ADMIN.tenantId = x.dataset.tenant; ADMIN.tab = 'Overview'; return renderAdmin(); }
+  if (h('[data-backadmin]')) { ADMIN.tenantId = null; return renderAdmin(); }
+  if ((x = h('[data-atab]'))) { ADMIN.tab = x.dataset.atab; return renderAdmin(); }
+  if (h('[data-newtenant]')) return openNewTenant();
+  if (h('[data-savetenant]')) {
+    const name = $('#ntName').value.trim(); if (!name) return toast('Studio name is required.');
+    const t = createTenant({ name, city: $('#ntCity').value, ownerName: $('#ntOwner').value || 'Owner',
+      ownerEmail: $('#ntEmail').value || 'owner@example.com', billingEmail: $('#ntBilling').value,
+      plan: $('#ntPlan').value.split(' — ')[0], domain: $('#ntDomain').value, sender: $('#ntSender').value,
+      number: $('#ntNumber').value, brevoKey: $('#ntKey').classList.contains('on') });
+    closeModal(); ADMIN.tenantId = t.id; ADMIN.tab = 'Sending setup';
+    toast('Account created. Finish Brevo and Twilio before it can send.'); return renderAdmin();
+  }
+  if ((x = h('[data-tstatus]'))) {
+    const t = TENANTS.find(y => y.id === ADMIN.tenantId);
+    setTenantStatus(t, x.dataset.tstatus, 'changed by Reserve Legacy');
+    toast(`${t.name} — ${x.dataset.tstatus.toLowerCase()}.`); return renderAdmin();
+  }
+  if ((x = h('[data-tplan]'))) return openPlanChange(x.dataset.tplan);
+  if ((x = h('[data-cportal]'))) return openClientPortal(x.dataset.cportal);
+  if ((x = h('[data-cpreset]'))) {
+    const [tid, cid] = x.dataset.cpreset.split('|');
+    const t = TENANTS.find(y => y.id === tid), c = t.clients.find(y => y.id === cid);
+    c.passwordSet = false; c.status = c.status === 'Suspended' ? 'Suspended' : 'Invited';
+    platformLog(`${t.name} — password reset forced for ${c.name}`, t.id, 'warn');
+    audit('portal.reset', `${c.name} (${t.name}): password reset forced`, OPS.email, 'warn');
+    toast(`New credentials emailed to ${c.name} from ${t.email.sender}.`);
+    return renderAdmin();
+  }
+  if ((x = h('[data-cpstatus]'))) {
+    const [tid, cid, st2] = x.dataset.cpstatus.split('|');
+    const t = TENANTS.find(y => y.id === tid), c = t.clients.find(y => y.id === cid);
+    c.status = st2;
+    platformLog(`${t.name} — ${c.name} portal ${st2.toLowerCase()}`, t.id, st2 === 'Suspended' ? 'warn' : 'info');
+    audit('portal.status', `${c.name} (${t.name}): portal ${st2.toLowerCase()}`, OPS.email, 'warn');
+    toast(`${c.name}'s portal ${st2.toLowerCase()}.`);
+    return renderAdmin();
+  }
+  if (h('[data-saveplan]')) {
+    const t = TENANTS.find(y => y.id === ADMIN.tenantId), np = $('#pcPlan').value;
+    const from = t.plan; t.plan = np; t.mrr = PLAN_PRICE[np];
+    t.seatsCap = cap('seats', np) === Infinity ? 20 : cap('seats', np);
+    t.contactCap = cap('contacts', np);
+    platformLog(`${t.name} — plan changed ${from} → ${np}`, t.id, 'create');
+    audit('platform.plan.changed', `${t.name}: ${from} → ${np}`, OPS.email, 'warn');
+    closeModal(); toast(`${t.name} moved to ${np}.`); return renderAdmin();
+  }
+  if (h('[data-rundunning]')) { runSubscriptionDunning(); toast('Billing cycle run.'); return renderAdmin(); }
+  if ((x = h('[data-copy]'))) {
+    const v = x.dataset.copy;
+    if (navigator.clipboard) navigator.clipboard.writeText(v).catch(() => {});
+    toast('Copied to the clipboard.'); return;
+  }
+  if ((x = h('[data-showsnippet]'))) return openSnippet(x.dataset.showsnippet);
+  if ((x = h('[data-connectlink]'))) {
+    const t = TENANTS.find(y => y.id === x.dataset.connectlink);
+    const link = 'https://connect.reservelegacy.com/onboard/' + t.id;
+    if (navigator.clipboard) navigator.clipboard.writeText(link).catch(() => {});
+    if (!t.stripe.accountId) { t.stripe.accountId = 'acct_1Qx' + (hash(t.name) % 1e6).toString().padStart(6, '0'); }
+    platformLog(`${t.name} — Stripe Connect onboarding link issued`, t.id);
+    audit('platform.stripe.link', `Connect link issued for ${t.name}`, OPS.email);
+    toast('Onboarding link copied. Send it to the studio owner.'); return renderAdmin();
+  }
+  if ((x = h('[data-testform]'))) {
+    const t = TENANTS.find(y => y.id === x.dataset.testform);
+    if (!t.forms.domains.length) return toast('Allow a domain first, or the post is rejected.');
+    t.forms.received30++;
+    platformLog(`${t.name} — test form submission accepted`, t.id);
+    toast('Test accepted. In their CRM this creates a lead and starts follow-up.'); return renderAdmin();
+  }
+  if ((x = h('[data-copyall]'))) {
+    const t = TENANTS.find(y => y.id === x.dataset.copyall);
+    const notes = [
+      t.name + ' — setup handover', '',
+      'Email sends from: ' + t.email.sender + ' (Brevo, ' + emailStatus(t) + ')',
+      'Texts send from:  ' + (t.sms.number || 'not provisioned') + ' (Twilio, ' + smsStatus(t) + ')',
+      'Payments:         Stripe ' + (t.stripe.accountId || 'not connected') + ' (' + stripeStatus(t) + ')',
+      'Contact form:     ' + formEndpoint(t),
+      'Allowed domains:  ' + (t.forms.domains.join(', ') || 'none'),
+      'Store:            ' + storeStatus(t), '',
+      'Setup is ' + setupProgress(t).pct + '% complete.'
+    ].join('\n');
+    if (navigator.clipboard) navigator.clipboard.writeText(notes).catch(() => {});
+    toast('Handover notes copied.'); return;
+  }
+  if ((x = h('[data-tundo]'))) {
+    const t = TENANTS.find(y => y.id === ADMIN.tenantId);
+    const [g, k] = x.dataset.tundo.split('.');
+    if (g === 'email' && k === 'key') t.email.apiKeySet = false;
+    else if (g === 'email' && k === 'sender') t.email.sender = '';
+    else if (g === 'sms' && k === 'svc') t.sms.messagingServiceSid = '';
+    else if (g === 'sms' && k === 'number') t.sms.number = '';
+    else if (g === 'sms' && k === 'brand') t.sms.brandRegistered = false;
+    else if (g === 'sms' && k === 'campaign') t.sms.campaignRegistered = false;
+    else if (g === 'stripe' && k === 'account') t.stripe.accountId = '';
+    else if (g === 'stripe' && k === 'charges') t.stripe.chargesEnabled = false;
+    else if (g === 'stripe' && k === 'payouts') t.stripe.payoutsEnabled = false;
+    else if (g === 'stripe') t.stripe[k] = false;
+    else if (g === 'forms' && k === 'domains') t.forms.domains = [];
+    else if (g === 'forms') t.forms[k] = false;
+    else if (g === 'store') t.store[k] = false;
+    else t[g][k] = false;
+    audit('platform.provisioning', `${t.name}: ${k} reverted`, OPS.email, 'warn');
+    return renderAdmin();
+  }
+  if ((x = h('[data-tstep]'))) {
+    const t = TENANTS.find(y => y.id === ADMIN.tenantId);
+    const [grp, k] = x.dataset.tstep.split('.');
+    if (grp === 'email') {
+      if (k === 'key') t.email.apiKeySet = true;
+      else if (k === 'sender') t.email.sender = t.email.sender || ('studio@' + t.email.domain);
+      else t.email[k] = true;
+    } else if (grp === 'sms') {
+      if (k === 'number') t.sms.number = t.sms.number || '+1 (214) 555-0' + (100 + (hash(t.name) % 89));
+      else if (k === 'svc') t.sms.messagingServiceSid = 'MG' + (hash(t.name) % 1e8).toString().padStart(8, '0') + 'f9e8d7';
+      else if (k === 'brand') t.sms.brandRegistered = true;
+      else if (k === 'campaign') t.sms.campaignRegistered = true;
+    } else if (grp === 'stripe') {
+      if (k === 'account') t.stripe.accountId = t.stripe.accountId || ('acct_1Qx' + (hash(t.name) % 1e6).toString().padStart(6, '0'));
+      else if (k === 'onboarded') t.stripe.onboarded = true;
+      else if (k === 'charges') t.stripe.chargesEnabled = true;
+      else if (k === 'payouts') t.stripe.payoutsEnabled = true;
+      else t.stripe[k] = true;
+    } else if (grp === 'forms') {
+      if (k === 'domains') t.forms.domains = t.forms.domains.length ? t.forms.domains : [t.email.domain];
+      else if (k === 'key') t.forms.key = t.forms.key || ('wf_live_' + Math.random().toString(16).slice(2, 10));
+      else t.forms[k] = true;
+    } else if (grp === 'store') {
+      if (k === 'enabled') return toast('The store comes with the plan. Change the plan to enable it.');
+      t.store[k] = true;
+    } else t[grp][k] = true;
+    t.email.status = emailStatus(t); t.sms.status = smsStatus(t);
+    platformLog(`${t.name} — ${grp === 'email' ? 'Brevo' : 'Twilio'} step done: ${k}`, t.id);
+    audit('platform.provisioning', `${t.name}: ${k} completed`, OPS.email);
+    return renderAdmin();
+  }
+  if ((x = h('[data-adminfilter]'))) { ADMIN.view = 'setup'; ADMIN.tenantId = null; return renderAdmin(); }
+  if ((x = h('[data-cbx]'))) { x.classList.toggle('on'); return; }
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'globalSearch') return drawSearch(t.value);
+  const tn = TENANTS.find(y => y.id === ADMIN.tenantId); if (!tn) return;
+  if (t.dataset.tfield) {
+    const [grp, k] = t.dataset.tfield.split('.');
+    tn[grp][k] = t.type === 'number' ? +t.value : t.value;
+  }
+  if (t.hasAttribute('data-tdomains'))
+    tn.forms.domains = t.value.split(',').map(s => s.trim()).filter(Boolean);
+  if (t.dataset.tmap) tn.forms.mapping[t.dataset.tmap] = t.value;
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' && e.target.id === 'aiInput') { const v = e.target.value; e.target.value = ''; adminAsk(v); }
+  if (e.key === 'Enter' && e.target.id === 'lgCode') document.querySelector('[data-docode]').click();
+  if (e.key === 'Enter' && (e.target.id === 'lgPass' || e.target.id === 'lgEmail')) document.querySelector('[data-dologin]').click();
+});
+
+function adminSearch(q) {
+  const s = q.trim().toLowerCase(); if (!s) return [];
+  const out = [];
+  TENANTS.forEach(t => {
+    if ([t.name, t.id, t.city, t.owner.name, t.owner.email, t.email.domain, t.plan, t.status].join(' ').toLowerCase().includes(s))
+      out.push({ kind: 'Studio', label: t.name, sub: `${t.plan} · ${t.status} · ${t.owner.email}`, act: () => { ADMIN.tenantId = t.id; ADMIN.tab = 'Overview'; renderAdmin(); } });
+  });
+  [['overview', 'Accounts'], ['setup', 'Setup queue'], ['billing', 'Billing & dunning'], ['audit', 'Audit log']]
+    .forEach(([k, l]) => { if (l.toLowerCase().includes(s)) out.push({ kind: 'Screen', label: l, sub: 'Go to this screen', act: () => { ADMIN.view = k; ADMIN.tenantId = null; renderAdmin(); } }); });
+  return out.slice(0, 12);
+}
+let SEARCH_HITS = [];
+function drawSearch(q) {
+  const box = $('#searchDrop'); SEARCH_HITS = adminSearch(q);
+  if (!q.trim()) { box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = SEARCH_HITS.length
+    ? SEARCH_HITS.map((h, i) => `<button class="sr" data-hit="${i}">
+        <span class="sr-k">${h.kind}</span><span class="sr-t"><b>${esc(h.label)}</b><span>${esc(h.sub)}</span></span></button>`).join('')
+    : `<div class="sr-empty">Nothing matches “${esc(q)}”.</div>`;
+}
+function adminNotifications() {
+  const list = [];
+  TENANTS.filter(t => t.status === 'Past due').forEach(t =>
+    list.push({ at: now(), kind: 'warn', text: `${t.name} is ${t.pastDueDays} days past due — ${money(t.mrr)}/mo at risk`, id: t.id }));
+  TENANTS.filter(t => t.status === 'Suspended').forEach(t =>
+    list.push({ at: t.suspendedAt || now(), kind: 'warn', text: `${t.name} is suspended for non-payment`, id: t.id }));
+  TENANTS.filter(t => setupProgress(t).pct < 100 && t.status !== 'Terminated').forEach(t =>
+    list.push({ at: t.startedAt, kind: 'info', text: `${t.name} setup is ${setupProgress(t).pct}% complete`, id: t.id }));
+  PLATFORM_EVENTS.slice(0, 8).forEach(e => list.push({ at: e.at, kind: e.kind, text: e.text, id: e.tenantId }));
+  return list.sort((a, b) => b.at - a.at).slice(0, 16);
+}
+function openNotifications() {
+  const n = adminNotifications();
+  modal('Notifications', n.length ? `<div style="margin:-6px -4px">
+    ${n.map(e => `<button class="rowi tap" style="width:100%" ${e.id ? `data-tenant="${e.id}"` : ''}>
+      <span class="sig-ic" style="background:${e.kind === 'warn' ? '#fdeaea' : 'var(--surface-2)'};
+        color:${e.kind === 'warn' ? '#c0392b' : 'var(--muted)'}">${I(e.kind === 'warn' ? 'warn' : 'build', 15)}</span>
+      <span class="tx"><b style="font-weight:500;font-size:13px">${esc(e.text)}</b><span>${fmtDT(e.at)}</span></span></button>`).join('')}
+    </div>` : '<p class="hint">Nothing needs you.</p>',
+    `<div class="sp"><button class="btn-dark" data-mclose>Close</button></div>`);
+}
+function platformAnswer(q) {
+  const s = q.toLowerCase(), st = platformStats();
+  if (/past due|unpaid|owe|risk|suspend/.test(s)) {
+    const r = TENANTS.filter(t => t.status === 'Past due' || t.status === 'Suspended');
+    return r.length ? `${money(st.atRisk)} at risk across ${r.length} accounts:\n\n` +
+      r.map(t => `${t.name} — ${t.status}, ${t.pastDueDays} days past due, ${money(t.mrr)}/mo`).join('\n')
+      : 'Every account is paid up.';
+  }
+  if (/setup|stripe|brevo|twilio|form|onboard/.test(s)) {
+    const r = TENANTS.filter(t => setupProgress(t).pct < 100);
+    return r.length ? `${r.length} accounts have unfinished setup:\n\n` +
+      r.map(t => `${t.name} — ${setupProgress(t).pct}% · email ${emailStatus(t)} · sms ${smsStatus(t)} · stripe ${stripeStatus(t)} · forms ${formsStatus(t)}`).join('\n')
+      : 'Every account is fully provisioned.';
+  }
+  if (/mrr|revenue|money|grow/.test(s))
+    return `MRR is ${money(st.mrr)} across ${st.active} active accounts, with ${money(st.atRisk)} at risk. ${st.trialing} trialing.`;
+  if (/biggest|largest|top/.test(s)) {
+    const top = [...TENANTS].sort((a, b) => b.mrr - a.mrr).slice(0, 5);
+    return 'Largest accounts:\n\n' + top.map(t => `${t.name} — ${t.plan}, ${money(t.mrr)}/mo, ${t.contacts.toLocaleString('en-US')} contacts`).join('\n');
+  }
+  return `${st.accounts} accounts · ${money(st.mrr)} MRR · ${st.seats} seats · ${st.formFills30} form fills and ${st.orders30} store orders in 30 days. ` +
+    `Ask about past due accounts, unfinished setup, MRR, or the largest accounts.`;
+}
+let ADM_CHAT = [];
+function openAI() {
+  modal(`${I('spark', 17)} Ask AI`, `
+    <div class="chat" id="chat">${ADM_CHAT.map(m => `<div class="${m.r}">${esc(m.t)}</div>`).join('')
+    || `<div class="a">I can see every studio account. Ask about billing, setup progress, MRR or a specific studio.</div>`}</div>
+    <div class="sugg">${["Who is past due?", "Whose setup is unfinished?", "What is our MRR?", "Largest accounts?"]
+      .map(q => `<button data-aiq="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <input class="inp" id="aiInput" placeholder="Ask about the platform…" style="flex:1">
+      <button class="btn-dark" data-aisend>${I('send', 15)}Ask</button></div>`);
+  setTimeout(() => $('#aiInput') && $('#aiInput').focus(), 60);
+}
+function adminAsk(q) {
+  if (!q.trim()) return;
+  ADM_CHAT.push({ r: 'q', t: q });
+  ADM_CHAT.push({ r: 'a', t: platformAnswer(q) });
+  openAI();
+  const c = $('#chat'); if (c) c.scrollTop = c.scrollHeight;
+}
+function openWorkspace() {
+  const st = platformStats();
+  modal('Reserve Legacy', `
+    <dl class="kv">
+      <dt>Accounts</dt><dd>${st.accounts} (${st.active} active, ${st.trialing} trialing)</dd>
+      <dt>MRR</dt><dd>${money(st.mrr)}</dd>
+      <dt>At risk</dt><dd>${money(st.atRisk)} across ${st.pastDue + st.suspended} accounts</dd>
+      <dt>Seats issued</dt><dd>${st.seats}</dd>
+      <dt>Contacts stored</dt><dd>${st.contacts.toLocaleString('en-US')}</dd>
+      <dt>Fully provisioned</dt><dd>${st.accounts - st.needsSetup} of ${st.accounts}</dd>
+    </dl>`, `<div class="sp"><button class="btn-dark" data-mclose>Close</button></div>`);
+}
+function openAdminSettings() {
+  modal('Console settings', `
+    <dl class="kv">
+      <dt>Signed in</dt><dd>${esc(OPS.email)}${ADM_AUTH.session ? ' · ' + fmtDT(ADM_AUTH.session.startedAt) : ''}</dd>
+      <dt>Method</dt><dd>${ADM_AUTH.session && ADM_AUTH.session.method === 'trusted' ? 'Trusted device' : 'Password + emailed code'}</dd>
+      <dt>Remembered</dt><dd>${ADM_AUTH.trusted.length ? ADM_AUTH.trusted[0].label + ' · ' + ADM_AUTH.trusted[0].duration : 'No devices remembered'}</dd>
+      <dt>Audit entries</dt><dd>${AUDIT.length}</dd>
+    </dl>
+    <p class="hint" style="margin-top:14px">Access is limited to reservelegacy.com addresses. Every action in this console is written to the audit log.</p>`,
+    `<button class="btn-o" data-forgetdev>${I('lock', 15)}Revoke remembered devices</button>
+     <div class="sp"><button class="btn-o" data-aview="audit" data-mclose>Open audit log</button>
+       <button class="btn-dark" data-mclose>Close</button></div>`);
+}
+function openAdminHelp() {
+  const faq = [
+    ['How do I set a studio up from scratch?', 'Create the account, then work down the Setup tab: Brevo for email, Twilio for texting, Stripe for payments, the contact-form endpoint, and the store webhook. The progress bar hits 100% when they can send and take money.'],
+    ['What does the contact form actually need?', 'A plain HTML form posting to their endpoint. Open Setup, press "Show the form snippet", and hand that to whoever builds the site. No API key goes on the page — the endpoint is scoped to their allowed domains.'],
+    ['What happens when someone fills the form?', 'We match on email, then phone. A person you already have is updated, never duplicated. Anyone new becomes a lead and the follow-up cadence starts within seconds.'],
+    ['What happens when someone buys a print?', 'Stripe tells us the order was paid. If the buyer matches an existing lead, that lead is converted to a customer. If they are new, they are created as a customer. Either way the order lands as a paid invoice.'],
+    ['Why Stripe Connect and not one shared account?', 'Money goes straight to the studio\'s own bank, they own the customer relationship, and Reserve Legacy never holds client funds. You can still take a platform fee per payment.'],
+    ['Why can studios not change their own plan?', 'Plans, seats and limits are commercial terms. The CRM only lets an owner request a change; you action it here on the account\'s Overview tab.'],
+    ['What does suspension actually do?', 'Blocks every login and stops automated sending. Nothing is deleted. It fires automatically at 21 days past due, and reactivating restores the account in minutes.']
+  ];
+  modal('Help', faq.map(([q, a2]) => `<details class="faq"><summary>${esc(q)}${I('chevD', 15)}</summary><p>${esc(a2)}</p></details>`).join(''),
+    `<div class="sp"><button class="btn-dark" data-mclose>Close</button></div>`, 'wide');
+}
+
+function enterAdmin() {
+  $('#loginLayer').hidden = true; $('#appRoot').hidden = false;
+  ADMIN.view = 'overview'; ADMIN.tenantId = null; renderAdmin();
+}
+function openPlanChange(id) {
+  const t = TENANTS.find(x => x.id === id);
+  modal(`Change plan — ${esc(t.name)}`, `
+    <p style="margin:0 0 14px;font-size:13.5px;line-height:1.6">Only Reserve Legacy can change a plan. The studio cannot do this from inside their CRM; they can only request it.</p>
+    <div class="form-row"><label>Current</label><input class="inp" value="${esc(t.plan)} — ${money(t.mrr)}/mo" disabled></div>
+    <div class="form-row"><label>New plan</label><select class="inp" id="pcPlan">
+      ${PLAN_ORDER.map(p => `<option${p === t.plan ? ' selected' : ''}>${p} — ${money(PLAN_PRICE[p])}/mo</option>`).join('')}
+    </select></div>
+    <p class="hint">Seats, contact caps and every feature gate move immediately in their CRM.</p>`,
+    `<div class="sp"><button class="btn-o" data-mclose>Cancel</button>
+      <button class="btn-dark" data-saveplan>${I('check', 15)}Apply plan change</button></div>`);
+  setTimeout(() => { const s = $('#pcPlan'); if (s) s.onchange = () => {}; }, 20);
+}
+
+
+/* ============================================================
+   The whole account setup, in one place
+   ============================================================ */
+function stepRow(t, group, s) {
+  return `<div class="setup-step ${s.done ? 'done' : ''}">
+    <span class="setup-ic">${I(s.done ? 'check' : 'clock', 14)}</span>
+    <div><b>${esc(s.l)}</b><span>${esc(s.hint)}</span></div>
+    ${s.done ? `<button class="btn-o" data-tundo="${group}.${s.k}">Undo</button>`
+      : `<button class="btn-dark" data-tstep="${group}.${s.k}">Mark done</button>`}</div>`;
+}
+
+function adminSetupTab(t) {
+  const p = setupProgress(t);
+  const em = emailSetupSteps(t), sm = smsSetupSteps(t), sp = stripeSetupSteps(t),
+    fm = formSetupSteps(t), sto = storeSetupSteps(t);
+  return `
+  <div class="setup-hero">
+    <div style="flex:1">
+      <b>${p.pct === 100 ? 'This account is fully set up' : `Setup is ${p.pct}% complete`}</b>
+      <span>${p.done} of ${p.total} steps done. Nothing sends and no payment can be taken until email, texting and Stripe are finished.</span>
+      <div class="meter-bar ${p.pct === 100 ? '' : 'warn'}" style="margin-top:10px"><i style="width:${p.pct}%"></i></div>
+    </div>
+    <button class="btn-o" data-copyall="${t.id}">${I('file', 15)}Copy the studio's handover notes</button>
+  </div>
+
+  <div class="two">
+    <div>
+      <section class="card setup-card">
+        <div class="card-h"><h3>${I('mail', 16)} Email — Brevo</h3>
+          <div class="sp"><span class="pill ${emailStatus(t) === 'Verified' ? 'p-booked' : 'p-warn'}">${emailStatus(t)}</span></div></div>
+        <div class="setup-fields">
+          <div class="form-row"><label>Sender address</label><input class="inp" value="${esc(t.email.sender)}" data-tfield="email.sender"></div>
+          <div class="form-row"><label>Sending domain</label><input class="inp" value="${esc(t.email.domain)}" data-tfield="email.domain"></div>
+        </div>
+        <div class="setup-list">${em.map(s => stepRow(t, 'email', s)).join('')}</div>
+      </section>
+
+      <section class="card setup-card">
+        <div class="card-h"><h3>${I('msg', 16)} Texting — Twilio</h3>
+          <div class="sp"><span class="pill ${smsStatus(t) === 'Registered' ? 'p-booked' : 'p-warn'}">${smsStatus(t)}</span></div></div>
+        <div class="setup-fields">
+          <div class="form-row"><label>Number</label><input class="inp" value="${esc(t.sms.number)}" placeholder="+1 (214) 555-0000" data-tfield="sms.number"></div>
+          <div class="form-row"><label>Messaging SID</label><input class="inp" value="${esc(t.sms.messagingServiceSid)}" placeholder="MG…" data-tfield="sms.messagingServiceSid"></div>
+        </div>
+        <div class="setup-list">${sm.map(s => stepRow(t, 'sms', s)).join('')}</div>
+        <p class="hint setup-note">10DLC is a carrier rule, not ours. Unregistered numbers get filtered, so no text sends until the campaign is approved.</p>
+      </section>
+
+      <section class="card setup-card">
+        <div class="card-h"><h3>${I('coin', 16)} Payments — Stripe</h3>
+          <div class="sp"><span class="pill ${stripeStatus(t) === 'Live' ? 'p-booked' : 'p-warn'}">${stripeStatus(t)}</span></div></div>
+        <div class="setup-fields">
+          <div class="form-row"><label>Connect account</label>
+            <input class="inp" value="${esc(t.stripe.accountId)}" placeholder="acct_…" data-tfield="stripe.accountId"></div>
+          <div class="form-row"><label>Statement text</label>
+            <input class="inp" value="${esc(t.stripe.statementDescriptor)}" maxlength="22" data-tfield="stripe.statementDescriptor"></div>
+          <div class="form-row"><label>Platform fee</label>
+            <div style="display:flex;gap:9px;align-items:center">
+              <input class="inp" style="width:90px" type="number" step="0.1" value="${t.stripe.platformFeePct}" data-tfield="stripe.platformFeePct">
+              <span style="font-size:12.5px;color:var(--muted)">% of each payment to Reserve Legacy</span></div></div>
+        </div>
+        <div class="setup-list">${sp.map(s => stepRow(t, 'stripe', s)).join('')}</div>
+        <p class="hint setup-note">Stripe Connect: the studio gets its own account, money lands in their bank, and Reserve Legacy
+        never holds client funds. Send them the onboarding link and Stripe handles identity and bank verification.</p>
+        <div class="setup-acts"><button class="btn-o" data-connectlink="${t.id}">${I('link', 15)}Copy Connect onboarding link</button></div>
+      </section>
+    </div>
+
+    <div>
+      <section class="card setup-card">
+        <div class="card-h"><h3>${I('flow', 16)} Website contact form</h3>
+          <div class="sp"><span class="pill ${formsStatus(t) === 'Live' ? 'p-booked' : 'p-warn'}">${formsStatus(t)}</span></div></div>
+        <div class="setup-fields">
+          <div class="form-row"><label>Post the form to</label>
+            <div class="copyfield"><code>${esc(formEndpoint(t))}</code>
+              <button class="btn-o" data-copy="${esc(formEndpoint(t))}">${I('file', 14)}Copy</button></div></div>
+          <div class="form-row"><label>Allowed domains</label>
+            <input class="inp" value="${t.forms.domains.join(', ')}" placeholder="studio.com, www.studio.com" data-tdomains></div>
+        </div>
+        <h4 class="ei-h" style="padding:0 18px">Field mapping</h4>
+        <div class="setup-fields">
+          ${Object.entries(t.forms.mapping).map(([crm, web]) => `
+            <div class="maprow"><span class="mapcrm">${crm}</span>${I('chevR', 13)}
+              <input class="inp" value="${esc(web)}" data-tmap="${crm}"></div>`).join('')}
+        </div>
+        <div class="setup-list">${fm.map(s => stepRow(t, 'forms', s)).join('')}</div>
+        <p class="hint setup-note">A submission is matched on email, then phone. Someone you already know is updated, never duplicated.
+        A new person becomes a lead and the follow-up cadence starts within seconds.</p>
+        <div class="setup-acts">
+          <button class="btn-o" data-showsnippet="${t.id}">${I('file', 15)}Show the form snippet</button>
+          <button class="btn-dark" data-testform="${t.id}">${I('bolt', 15)}Send a test submission</button>
+        </div>
+      </section>
+
+      <section class="card setup-card">
+        <div class="card-h"><h3>${I('image', 16)} Print &amp; album store</h3>
+          <div class="sp"><span class="pill ${storeStatus(t) === 'Live' ? 'p-booked' : storeStatus(t) === 'Not on plan' ? 'p-lost' : 'p-warn'}">${storeStatus(t)}</span></div></div>
+        <div class="setup-list">${sto.map(s => stepRow(t, 'store', s)).join('')}</div>
+        <p class="hint setup-note">When someone pays, the buyer is matched against the CRM. An existing lead is
+        <b>converted to a customer</b>; anyone new is created as a customer straight away, with the order recorded as a paid invoice.</p>
+      </section>
+    </div>
+  </div>`;
+}
+
+function openSnippet(id) {
+  const t = TENANTS.find(x => x.id === id);
+  const parts = [
+    'FORM ACTION',
+    formEndpoint(t),
+    '',
+    'METHOD',
+    'POST, as application/x-www-form-urlencoded or JSON',
+    '',
+    'FIELD NAMES the form must send',
+    ...Object.entries(t.forms.mapping).map(([crm, web]) => '  ' + web + '   →  ' + crm),
+    '',
+    'ALLOWED ORIGINS',
+    t.forms.domains.join(', ') || '(none set — posts will be rejected)',
+    '',
+    'ANTI-SPAM',
+    '  Add a hidden field named company_website and leave it empty.',
+    '  Anything that fills it in is dropped silently.',
+    '',
+    'ON SUCCESS',
+    '  200 with { ok: true, contact_id }.',
+    t.forms.autoEnrol
+      ? '  The lead is created and the follow-up cadence starts immediately.'
+      : '  The lead is created. Follow-up does not start automatically.'
+  ].join('\n');
+  modal('Form setup for ' + esc(t.name),
+    `<p style="margin:0 0 14px;font-size:13.5px;line-height:1.6">Hand this to whoever builds the website. It is plain form posting — no JavaScript library, no API key on the page.</p>
+     <pre class="snippet">${esc(parts)}</pre>`,
+    `<div class="sp"><button class="btn-o" data-mclose>Close</button>
+      <button class="btn-dark" data-copy="${esc(formEndpoint(t))}">${I('file', 15)}Copy the endpoint</button></div>`, 'wide');
+}
+
+
+/* ============================================================
+   Client portals — Reserve Legacy sees every customer of every
+   studio, without ever emailing them directly
+   ============================================================ */
+const pStatusCls = s => s === 'Active' ? 'p-booked' : s === 'Invited' ? 'p-warn' : 'p-lost';
+
+function adminPortals(box) {
+  const s = platformStats();
+  const rows = TENANTS.filter(t => t.status !== 'Terminated')
+    .map(t => ({ t, n: t.clients.length,
+      active: t.clients.filter(c => c.status === 'Active').length,
+      invited: t.clients.filter(c => c.status === 'Invited').length,
+      susp: t.clients.filter(c => c.status === 'Suspended').length,
+      owed: t.clients.reduce((x, c) => x + c.balance, 0),
+      stale: t.clients.filter(c => c.status === 'Invited' && now() - c.createdAt > 30 * DAY).length }))
+    .sort((a, b) => b.n - a.n);
+  box.innerHTML = `
+  <p class="lede">Every customer of every studio on the platform. Reserve Legacy can see and fix access here,
+  but invitations and resets always send from the studio's own address — a client never hears from us directly.</p>
+  ${clockBar()}
+  <div class="stats">
+    ${st('Client portals', s.portals.toLocaleString('en-US'), 'across ' + rows.length + ' studios')}
+    ${st('Active', s.portalsActive, 'signed in and using it')}
+    ${st('Never signed in', s.portalsInvited, 'still on temporary credentials')}
+    ${st('Suspended', s.portalsSuspended, 'access blocked by the studio')}
+    ${st('Owed by clients', money(s.clientOwed), 'across every studio')}
+  </div>
+  ${rows.reduce((n, r) => n + r.stale, 0) ? `<div class="warnbox">${I('warn', 18)}
+    <p><b>${rows.reduce((n, r) => n + r.stale, 0)} clients were invited over a month ago and have never signed in.</b>
+    Usually the invitation went to spam, or the studio has the wrong address on file.</p></div>` : ''}
+  <div class="tbl-wrap"><table class="tbl">
+    <colgroup><col style="width:24%"><col style="width:11%"><col style="width:11%"><col style="width:12%">
+      <col style="width:11%"><col style="width:13%"><col style="width:18%"></colgroup>
+    <thead><tr><th>Studio</th><th>Portals</th><th>Active</th><th>Never signed in</th>
+      <th>Suspended</th><th>Owed by clients</th><th>Portal domain</th></tr></thead>
+    <tbody>${rows.map(r => `<tr data-tenant="${r.t.id}">
+      <td><div class="cell-b"><span class="logo-sq" style="background:${avc(r.t.name)}">${initials(r.t.name)}</span>
+        <b>${esc(r.t.name)}</b></div></td>
+      <td style="font-weight:600">${r.n}</td>
+      <td style="color:var(--body)">${r.active}</td>
+      <td>${r.invited ? `<span class="pill ${r.stale ? 'p-lost' : 'p-warn'}">${r.invited}${r.stale ? ' · ' + r.stale + ' stale' : ''}</span>` : '<span style="color:var(--faint)">—</span>'}</td>
+      <td style="color:var(--body)">${r.susp || '—'}</td>
+      <td style="color:var(--body)">${r.owed ? money(r.owed) : '—'}</td>
+      <td style="color:var(--muted);font-size:12px">portal.${esc(r.t.email.domain)}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+function adminTenantPortals(t) {
+  const cs = t.clients;
+  const n = s => cs.filter(c => c.status === s).length;
+  return `
+  <p class="lede">${esc(t.name)}'s own customers. Each of these people signs in at
+  <b>portal.${esc(t.email.domain)}</b>, sees ${esc(t.name)}'s branding, and gets email from
+  <b>${esc(t.email.sender)}</b> — never from Reserve Legacy.</p>
+  <div class="stats">
+    ${st('Client portals', cs.length, 'created automatically on conversion')}
+    ${st('Active', n('Active'), 'password set')}
+    ${st('Never signed in', n('Invited'), 'temporary credentials still valid')}
+    ${st('Suspended', n('Suspended'), 'blocked by the studio')}
+    ${st('Owed by clients', money(cs.reduce((s2, c) => s2 + c.balance, 0)), 'unpaid invoices')}
+  </div>
+  <div class="tbl-wrap"><table class="tbl">
+    <colgroup><col style="width:19%"><col style="width:20%"><col style="width:11%"><col style="width:11%">
+      <col style="width:12%"><col style="width:11%"><col style="width:16%"></colgroup>
+    <thead><tr><th>Client</th><th>Portal address</th><th>Status</th><th>Agreement</th>
+      <th>Last sign-in</th><th>Owed</th><th></th></tr></thead>
+    <tbody>${cs.map(c => `<tr>
+      <td><div class="cell-b"><span class="logo-sq" style="background:${avc(c.name)}">${initials(c.name)}</span>
+        <b>${esc(c.name)}</b></div></td>
+      <td style="color:var(--muted);font-size:12px">${esc(c.url)}</td>
+      <td><span class="pill ${pStatusCls(c.status)}">${c.status}</span></td>
+      <td>${c.agreementSigned ? '<span class="pill p-booked">Signed</span>' : '<span class="pill p-warn">Waiting</span>'}</td>
+      <td style="color:var(--body)">${c.lastLogin ? fmtD(c.lastLogin) : 'Never'}</td>
+      <td>${c.balance ? `<span class="pill p-warn">${money(c.balance)}</span>` : '<span style="color:var(--faint)">—</span>'}</td>
+      <td class="rowact">
+        <button class="mini" data-cportal="${t.id}|${c.id}" title="Manage">${I('cog', 14)}</button>
+      </td></tr>`).join('')}</tbody></table></div>
+  <p class="hint" style="margin-top:12px">Reserve Legacy can restore access or force a password reset when a studio
+  cannot — support cases, a locked-out client, a studio that has gone quiet. Every action lands in the audit log.</p>`;
+}
+
+function openClientPortal(key) {
+  const [tid, cid] = key.split('|');
+  const t = TENANTS.find(x => x.id === tid);
+  const c = t.clients.find(x => x.id === cid);
+  modal(`${esc(c.name)} — ${esc(t.name)}`, `
+    <dl class="kv">
+      <dt>Studio</dt><dd>${esc(t.name)} · ${esc(t.id)}</dd>
+      <dt>Portal</dt><dd style="word-break:break-all;font-size:12px">${esc(c.url)}</dd>
+      <dt>Username</dt><dd>${esc(c.username)}</dd>
+      <dt>Status</dt><dd><span class="pill ${pStatusCls(c.status)}">${c.status}</span></dd>
+      <dt>Password</dt><dd>${c.passwordSet ? 'Set by the client' : 'Still on temporary credentials'}</dd>
+      <dt>Session</dt><dd>${esc(c.session)}</dd>
+      <dt>Agreement</dt><dd>${c.agreementSigned ? 'Signed' : 'Waiting for signature'}</dd>
+      <dt>Last sign-in</dt><dd>${c.lastLogin ? fmtDT(c.lastLogin) + ' · ' + c.logins + ' visits' : 'Never'}</dd>
+      <dt>Owed</dt><dd>${c.balance ? money(c.balance) + ' — gallery locked' : 'Nothing outstanding'}</dd>
+      <dt>Email comes from</dt><dd>${esc(t.email.sender)}</dd>
+    </dl>
+    <p class="hint" style="margin-top:14px">Anything you do here is on the studio's behalf. The client sees
+    ${esc(t.name)}'s name on every screen and every email, with a small “powered by Reserve Legacy” line on sign-in.</p>`,
+    `<div class="sp">
+      <button class="btn-o" data-cpreset="${key}">${I('lock', 15)}Force password reset</button>
+      ${c.status === 'Suspended'
+      ? `<button class="btn-dark" data-cpstatus="${key}|Active">${I('check', 15)}Restore access</button>`
+      : `<button class="btn-o" data-cpstatus="${key}|Suspended">${I('lock', 15)}Suspend access</button>`}
+      <button class="btn-dark" data-mclose>Close</button>
+    </div>`, 'wide');
+}
+
+
+/* ====================================================================
+   adminboot.js
+   ==================================================================== */
+
+/* ---------- Reserve Legacy admin — boot ---------- */
+const ADMIN = { view: 'overview', tenantId: null, tab: 'Overview' };
+seedTenants(now());
+audit('platform.start', 'Admin console initialised', 'ops@reservelegacy.com');
+renderAdminLogin();
+</script>
+</body>
+</html>

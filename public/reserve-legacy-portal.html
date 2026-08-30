@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reserve Legacy — Client Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style id="appStyle">
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:14px;color:#1a1d24;background:#f6f5f3;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+input{font:inherit;color:inherit}
+svg{display:block;flex:none}
+a{color:inherit}
+:focus-visible{outline:2px solid #1e7aa6;outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#dcdad6;border-radius:20px;border:3px solid #f6f5f3}
+
+.inp{width:100%;height:44px;border:1px solid #ded9d2;border-radius:10px;padding:0 13px;font-size:14px;
+  outline:0;background:#fff}
+.inp:focus{border-color:#1a1d24}
+.btn-dark{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 20px;
+  border-radius:10px;background:#1a1d24;color:#fff;font-size:14px;font-weight:600}
+.btn-dark:hover{background:#282c36}
+.btn-o{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 14px;border:1px solid #ded9d2;
+  border-radius:9px;font-size:13px;font-weight:500;background:#fff}
+.btn-o:hover{background:#faf9f7}
+.pill{display:inline-flex;align-items:center;font-size:11.5px;font-weight:600;border-radius:20px;padding:4px 11px;flex:none}
+.pill.ok{background:#dff3e6;color:#157a4a}
+.pill.warn{background:#fdeacd;color:#92600e}
+.pill.bad{background:#fbe0de;color:#b3261e}
+.kv{display:grid;grid-template-columns:120px 1fr;gap:10px 14px;font-size:13.5px;margin:0}
+.kv dt{color:#8b8f98}
+.kv dd{margin:0;font-weight:500}
+.fr{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;align-items:center;margin-bottom:12px}
+.fr>label{font-size:13.5px;color:#4b4f57;font-weight:500}
+
+/* ---------- sign in ---------- */
+.lg{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) 420px}
+.lg-form{background:#fff;padding:48px 7vw;display:flex;flex-direction:column;justify-content:center}
+.lg-brand{display:flex;align-items:center;gap:12px;margin-bottom:38px}
+.lg-brand b{display:block;font-size:15px;font-weight:600}
+.lg-brand span{display:block;font-size:12px;color:#8b8f98}
+.lg-form h1{margin:0 0 8px;font-size:30px;font-weight:600;letter-spacing:-.025em}
+.lg-sub{margin:0 0 24px;font-size:14px;color:#8b8f98;line-height:1.6;max-width:420px}
+.lg-l{display:block;font-size:12.5px;font-weight:600;color:#4b4f57;margin:16px 0 7px}
+.lg-form .inp{max-width:420px}
+.lg-code{font-size:24px!important;letter-spacing:.34em;text-align:center;font-weight:600;
+  max-width:230px!important;height:56px!important}
+.lg-go{margin-top:22px;max-width:420px;width:100%}
+.lg-err{color:#b3261e;font-size:12.5px;margin-top:10px;min-height:17px;max-width:420px}
+.lg-back{margin-top:16px;font-size:13px;color:#1e7aa6;text-decoration:underline;text-underline-offset:3px;text-align:left}
+.lg-rem{display:flex;gap:7px;flex-wrap:wrap}
+.lg-rem button{height:36px;padding:0 14px;border:1px solid #ded9d2;border-radius:9px;font-size:13px;
+  font-weight:500;background:#fff}
+.lg-rem button.is-on{border-color:#1e7aa6;background:#f0f8fb;color:#1e7aa6;font-weight:600}
+.lg-mail{border:1px solid #ece8e2;border-radius:12px;padding:15px 17px;background:#faf9f7;
+  margin-bottom:20px;max-width:460px}
+.lg-mail-h{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  color:#a8a29a;text-transform:uppercase;margin-bottom:10px}
+.lg-mail b{display:block;font-size:14px;margin-bottom:5px}
+.lg-mail p{margin:0;font-size:12.5px;color:#5c616a;line-height:1.55}
+.lg-demo{margin-top:30px;padding-top:22px;border-top:1px solid #f0ede9;max-width:420px}
+.lg-demo>span{display:block;font-size:11.5px;color:#a8a29a;margin-bottom:10px}
+.lg-demo button{display:block;width:100%;text-align:left;font-size:13px;padding:10px 13px;border-radius:9px;
+  border:1px solid #ece8e2;margin-bottom:7px;background:#fff;color:#4b4f57}
+.lg-demo button:hover{border-color:#c9c3ba;color:#1a1d24}
+.lg-aside{background:#1a1d24;color:#fff;padding:48px 40px;display:flex;flex-direction:column;justify-content:center}
+.lg-aside h3{display:flex;align-items:center;gap:10px;margin:0 0 24px;font-size:15px;font-weight:600}
+.lg-aside ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:18px}
+.lg-aside li{font-size:13.5px;line-height:1.65;color:#b0b5bf;padding-left:17px;position:relative}
+.lg-aside li::before{content:"";position:absolute;left:0;top:9px;width:5px;height:5px;border-radius:50%;background:#1e7aa6}
+.lg-aside li b{color:#fff;font-weight:600}
+.powered{margin-top:34px;font-size:11.5px;color:#a8a29a;letter-spacing:.01em}
+.powered b{font-weight:600;color:#6b6459}
+.lg-tiny{margin:8px 0 0;font-size:11.5px;color:#a8a29a;max-width:420px;line-height:1.5}
+.pt-powered{font-size:10.5px;color:#b5afa6;padding:4px 6px 2px;letter-spacing:.02em}
+.lg-note{margin:30px 0 0;font-size:11.5px;color:#767c88;border-top:1px solid #2a2e38;padding-top:20px;line-height:1.7}
+
+/* ---------- portal ---------- */
+.pt{display:flex;min-height:100vh}
+.pt-side{width:268px;flex:none;background:#fff;border-right:1px solid #ece8e2;padding:22px 16px 16px;
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.pt-brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.pt-logo{width:44px;height:44px;border-radius:13px;background:#112166;color:#fff;display:grid;
+  place-items:center;font-weight:700;font-size:14px;flex:none;overflow:hidden}
+.pt-logo img{width:100%;height:100%;object-fit:contain;padding:6px;background:#fff}
+.pt-brand b{display:block;font-size:14px;font-weight:600;line-height:1.3}
+.pt-brand span{display:block;font-size:11.5px;color:#8b8f98}
+.pt-nav{display:flex;flex-direction:column;gap:3px;flex:1}
+.pt-nav button{display:flex;align-items:center;gap:12px;height:42px;padding:0 13px;border-radius:10px;
+  font-size:14px;font-weight:500;color:#4b4f57;text-align:left;width:100%}
+.pt-nav button svg{color:#9a958c;flex:none}
+.pt-nav button:hover{background:#f6f5f3}
+.pt-nav button.is-on{background:#f0efec;color:#1a1d24;font-weight:600}
+.pt-nav button.is-on svg{color:#1a1d24}
+.pt-dot{width:7px;height:7px;border-radius:50%;background:#d9483b;margin-left:auto;flex:none}
+.pt-help{border-top:1px solid #f0ede9;padding:16px 6px 12px;margin-top:12px}
+.pt-help b{display:block;font-size:12px;font-weight:600;margin-bottom:9px}
+.pt-help a{display:flex;align-items:center;gap:7px;font-size:12px;color:#8b8f98;text-decoration:none;padding:3px 0}
+.pt-help a:hover{color:#1a1d24}
+.pt-me{display:flex;align-items:center;gap:11px;padding:14px 6px;border-top:1px solid #f0ede9}
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;
+  font-size:11.5px;font-weight:700;flex:none}
+.pt-me b{display:block;font-size:13px;font-weight:600}
+.pt-me span{display:block;font-size:11px;color:#8b8f98;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;max-width:158px}
+.pt-exit{font-size:12.5px;color:#8b8f98;padding:9px 6px;text-align:left;display:flex;align-items:center;gap:6px}
+.pt-exit:hover{color:#1a1d24}
+.pt-main{flex:1;min-width:0}
+.pt-inner{max-width:820px;margin:0 auto;padding:40px 34px 70px}
+.pt-hero{margin-bottom:24px}
+.pt-eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#a8a29a}
+.pt-hero h2{margin:8px 0 5px;font-size:34px;font-weight:600;letter-spacing:-.028em}
+.pt-hero p{margin:0;font-size:14.5px;color:#8b8f98}
+.pt-h{margin:0 0 22px;font-size:27px;font-weight:600;letter-spacing:-.022em}
+.pt-alert{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #ece8e2;
+  border-left:3px solid #e08a3c;border-radius:13px;padding:16px 18px;margin-bottom:14px}
+.pt-alert.bad{border-left-color:#d9483b}
+.pt-alert>svg{color:#e08a3c;flex:none}
+.pt-alert.bad>svg{color:#d9483b}
+.pt-alert>div{flex:1;min-width:0}
+.pt-alert b{display:block;font-size:14.5px;font-weight:600;margin-bottom:3px}
+.pt-alert span{display:block;font-size:13px;color:#8b8f98;line-height:1.55}
+.pt-alert .btn-dark{flex:none;height:40px}
+.pt-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:12px;margin-bottom:24px}
+.pt-card{background:#fff;border:1px solid #ece8e2;border-radius:13px;padding:17px;text-align:left}
+.pt-card:hover{border-color:#d6d0c7;box-shadow:0 2px 12px rgba(0,0,0,.045)}
+.pt-card-ic{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:#f2f0ec;
+  color:#6b6459;margin-bottom:12px}
+.pt-card b{display:block;font-size:14px;font-weight:600;margin-bottom:3px}
+.pt-card>span:last-child{display:block;font-size:12.5px;color:#8b8f98}
+.pt-panel{background:#fff;border:1px solid #ece8e2;border-radius:15px;padding:24px 26px;margin-bottom:14px}
+.pt-panel h3{margin:0 0 16px;font-size:16px;font-weight:600}
+.pt-hint{font-size:12.5px;color:#8b8f98;line-height:1.6;margin:8px 0 0}
+.pt-notes{font-size:13px;color:#5c616a;line-height:1.6;margin:0 0 16px;padding-bottom:14px;border-bottom:1px solid #f4f1ed}
+.pt-steps{margin:0;padding:0;list-style:none;counter-reset:s}
+.pt-steps li{position:relative;padding:0 0 20px 36px;counter-increment:s}
+.pt-steps li::before{content:counter(s);position:absolute;left:0;top:-1px;width:24px;height:24px;
+  border-radius:50%;background:#f0efec;color:#a8a29a;display:grid;place-items:center;font-size:11.5px;font-weight:700}
+.pt-steps li::after{content:"";position:absolute;left:11.5px;top:26px;bottom:2px;width:1px;background:#f0ede9}
+.pt-steps li:last-child{padding-bottom:0}
+.pt-steps li:last-child::after{display:none}
+.pt-steps li.done::before{content:"✓";background:#dff3e6;color:#157a4a}
+.pt-steps li.now::before{background:#1a1d24;color:#fff}
+.pt-steps b{display:block;font-size:14px;font-weight:600;margin-bottom:3px}
+.pt-steps span{display:block;font-size:13px;color:#8b8f98;line-height:1.55}
+.pt-agr-h{display:flex;align-items:flex-start;gap:13px;margin-bottom:17px}
+.pt-agr-h>div{flex:1;min-width:0}
+.pt-agr-h b{display:block;font-size:15.5px;font-weight:600}
+.pt-agr-h span{display:block;font-size:12.5px;color:#8b8f98;margin-top:3px}
+.pt-doc{max-height:360px;overflow-y:auto;border:1px solid #f0ede9;border-radius:12px;padding:20px 22px;background:#fbfaf8}
+.pt-doc h4{margin:18px 0 6px;font-size:13px;font-weight:700}
+.pt-doc h4:first-child{margin-top:0}
+.pt-doc p{margin:0;font-size:13px;line-height:1.7;color:#4b4f57}
+.pt-sign{margin-top:18px;border-top:1px solid #f0ede9;padding-top:18px}
+.sig{max-width:340px;font-family:Georgia,"Times New Roman",serif;font-size:19px;font-style:italic}
+.pt-sign .btn-dark{margin-top:14px}
+.pt-signed{display:flex;align-items:center;gap:12px;background:#f4faf6;border:1px solid #cfe9da;
+  border-radius:12px;padding:14px 16px;margin-top:18px}
+.pt-signed>svg{color:#157a4a;flex:none}
+.pt-signed>div{flex:1;min-width:0}
+.pt-signed b{display:block;font-size:13.5px;font-weight:600}
+.pt-signed span{display:block;font-size:12px;color:#8b8f98;margin-top:2px}
+table.pt-lines{width:100%;border-collapse:collapse}
+.pt-lines td{padding:10px 0;border-bottom:1px solid #f4f1ed;font-size:13.5px;color:#4b4f57}
+.pt-lines td:nth-child(2){width:52px;text-align:center;color:#a8a29a}
+.pt-lines td:last-child{width:112px;text-align:right;font-weight:600;color:#1a1d24}
+.pt-lines em{font-style:normal;font-size:10px;font-weight:700;color:#a8a29a;background:#f4f1ed;
+  border-radius:4px;padding:2px 6px;margin-left:6px}
+.pt-tot{margin-top:14px}
+.pt-tot>div{display:flex;font-size:13px;padding:5px 0;color:#8b8f98}
+.pt-tot b{margin-left:auto;color:#4b4f57;font-weight:600;font-variant-numeric:tabular-nums}
+.pt-grand{border-top:1px solid #f0ede9;margin-top:9px;padding-top:12px!important;font-size:14.5px!important;color:#1a1d24!important}
+.pt-grand b{font-size:22px;color:#1a1d24}
+.pt-wide{width:100%;margin-top:18px;height:46px}
+.pt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:11px}
+.pt-photo{position:relative;margin:0;aspect-ratio:4/5;border-radius:11px;overflow:hidden;background:#eee;
+  user-select:none;-webkit-user-select:none}
+.pt-img{position:absolute;inset:0;background:linear-gradient(150deg,var(--a),var(--b));-webkit-user-drag:none}
+.pt-grid.locked .pt-photo{filter:contrast(.94) saturate(.88)}
+.pt-grid.locked .pt-img{filter:blur(1.2px)}
+.pt-grid.locked .pt-photo::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(-24deg,transparent 0 48px,rgba(255,255,255,.1) 48px 50px)}
+.pt-mark{position:absolute;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.66);
+  font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;text-align:center;
+  transform:rotate(-24deg);pointer-events:none;user-select:none;line-height:2.8;
+  text-shadow:0 1px 3px rgba(0,0,0,.32)}
+.pt-dl{position:absolute;right:8px;bottom:8px;width:30px;height:30px;border-radius:9px;
+  background:rgba(255,255,255,.95);display:grid;place-items:center;color:#1a1d24;
+  box-shadow:0 1px 6px rgba(0,0,0,.2)}
+.pt-empty{text-align:center;padding:40px 20px;color:#8b8f98}
+.pt-empty svg{margin:0 auto 14px;color:#cfc9c0}
+.pt-empty b{display:block;font-size:16px;color:#1a1d24;font-weight:600;margin-bottom:7px}
+.pt-empty p{margin:0 auto;font-size:13.5px;line-height:1.6;max-width:420px}
+
+/* ---------- modal ---------- */
+.mo-wrap{position:fixed;inset:0;display:grid;place-items:center;padding:24px;z-index:80;opacity:0;
+  pointer-events:none;transition:opacity .18s}
+.mo-wrap.on{opacity:1;pointer-events:auto}
+.mo-bg{position:absolute;inset:0;background:rgba(26,29,36,.4)}
+.mo{position:relative;background:#fff;border-radius:17px;width:min(500px,100%);max-height:88vh;
+  display:flex;flex-direction:column;box-shadow:0 26px 64px rgba(0,0,0,.26);transform:translateY(10px);transition:transform .18s}
+.mo-wrap.on .mo{transform:none}
+.mo-h{display:flex;align-items:center;padding:19px 22px;border-bottom:1px solid #f0ede9}
+.mo-h b{font-size:17px;font-weight:600}
+.mo-x{margin-left:auto;width:34px;height:34px;border-radius:9px;border:1px solid #ece8e2;display:grid;
+  place-items:center;color:#8b8f98}
+.mo-x:hover{background:#faf9f7;color:#1a1d24}
+.mo-b{padding:20px 22px;overflow-y:auto}
+.mo-f{display:flex;gap:10px;justify-content:flex-end;padding:16px 22px;border-top:1px solid #f0ede9;
+  background:#faf9f7;border-radius:0 0 17px 17px}
+.pay-sum{border:1px solid #ece8e2;border-radius:12px;padding:15px 17px;background:#faf9f7;margin-bottom:20px}
+.pay-sum>div{display:flex;font-size:13px;padding:5px 0;color:#8b8f98}
+.pay-sum b{margin-left:auto;color:#4b4f57;font-weight:600;font-variant-numeric:tabular-nums}
+.pay-grand{border-top:1px solid #ece8e2;margin-top:9px;padding-top:11px!important;font-size:14.5px!important;color:#1a1d24!important}
+.pay-grand b{font-size:21px;color:#1a1d24}
+.pay-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.pay-note{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#8b8f98;line-height:1.6;margin:18px 0 0}
+.pay-note svg{margin-top:2px;flex:none}
+
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,18px);background:#1a1d24;color:#fff;
+  border-radius:12px;padding:13px 20px;font-size:13.5px;font-weight:500;box-shadow:0 14px 40px rgba(0,0,0,.2);
+  opacity:0;pointer-events:none;transition:.2s;z-index:90;max-width:88vw;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:900px){
+  .lg{grid-template-columns:1fr}
+  .lg-aside{display:none}
+  .lg-form{padding:36px 22px}
+}
+@media (max-width:820px){
+  .pt-side{display:none}
+  .pt-inner{padding:26px 18px 56px}
+  .pt-hero h2{font-size:27px}
+  .pay-row{grid-template-columns:1fr}
+  .fr{grid-template-columns:1fr;gap:6px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div class="mo-wrap" id="modal"></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ============================================================
+   Reserve Legacy — Client Portal (standalone application)
+
+   This is the app a studio's CUSTOMER signs into. It is not the
+   CRM and it is not the admin console. It runs on its own
+   domain — portal.<studio>.com — and in production reads the
+   same database the CRM writes to.
+
+   Everything below the DEMO DATA block is the application. The
+   demo data stands in for the API calls a real deployment makes:
+       GET  /portal/me
+       GET  /portal/agreements
+       POST /portal/agreements/:id/sign
+       GET  /portal/invoices
+       POST /portal/invoices/:id/pay      (Stripe payment intent)
+       GET  /portal/galleries
+       PATCH /portal/profile
+   ============================================================ */
+
+const HOUR = 3600e3, DAY = 24 * HOUR;
+const now = () => Date.now();
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => '$' + Math.round(n).toLocaleString('en-US');
+const fmtD = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmtDT = d => new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+const initials = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+const hash = s => { let h = 0; for (let i = 0; i < String(s).length; i++) h = (h * 31 + String(s).charCodeAt(i)) | 0; return Math.abs(h); };
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+/* the studio this portal belongs to — in production it comes from the domain */
+const PLATFORM = { name: 'Reserve Legacy', url: 'https://reservelegacy.com' };
+
+/* The studio is resolved from the domain the portal is served on.
+   Everything the client sees is the STUDIO's brand; Reserve Legacy
+   appears only as a small "powered by" line on the sign-in screen. */
+const STUDIO = {
+  name: 'Willow & Ivy Photography',
+  email: 'studio@willowandivy.com',
+  phone: '+1 (214) 555-0188',
+  address: '2118 Greenville Ave, Dallas, TX 75206',
+  logo: null,
+  taxLabel: 'TX sales tax',
+  taxRate: 0.0825,
+  processingPct: 0.03,
+  domain: 'portal.willowandivy.com'
+};
+
+/* ============================================================
+   DEMO DATA — three clients at different points in the process
+   ============================================================ */
+const SWATCHES = [
+  ['#c8b6a6', '#8d7b68'], ['#9db2bf', '#526d82'], ['#b9b4c7', '#5c5470'],
+  ['#c7d2c0', '#728156'], ['#e0c9b1', '#a67b5b'], ['#adb5bd', '#6c757d'],
+  ['#d4a5a5', '#9c6f6f'], ['#a8bfa0', '#5f7a61'], ['#bfae9f', '#7d6b5d']
+];
+const photos = (n, seed) => Array.from({ length: n }, (_, i) => {
+  const [a, b] = SWATCHES[hash(seed + i) % SWATCHES.length];
+  return { id: seed + '-' + i, a, b, rot: (hash(seed + 'r' + i) % 9) - 4 };
+});
+
+function agreementSections(what, hours, turn, dep) {
+  return [
+    { h: 'The work', p: `${STUDIO.name} will photograph your ${what}, providing ${hours} ${hours === 1 ? 'hour' : 'hours'} of coverage. A curated, colour-corrected gallery is delivered within ${turn} days of the shoot date.` },
+    { h: 'Booking and payment', p: `A ${dep}% retainer confirms the date and is non-refundable. The balance is due before the shoot. Every invoice shows sales tax and the 3% card processing fee as separate lines, so the total you see is the total you pay.` },
+    { h: 'Your date', p: `The date is held only once this agreement is signed and the retainer has cleared. Until then it stays available to other enquiries.` },
+    { h: 'Delivery and access', p: `Your gallery appears in this portal as soon as editing finishes. Images are watermarked and downloads are disabled until the invoice covering that work is paid in full. Once it clears, the watermarks are removed and full-resolution downloads unlock straight away.` },
+    { h: 'Copyright and licence', p: `${STUDIO.name} retains copyright of all images. On payment you receive a personal-use licence to print, share and reproduce them however you like. Commercial use requires a separate licence.` },
+    { h: 'Cancellation and rescheduling', p: `You may reschedule once at no cost with at least 30 days notice, subject to availability. Cancelling within 30 days of the shoot forfeits the retainer. If ${STUDIO.name} cannot attend for any reason, everything you have paid is refunded in full.` },
+    { h: 'Weather and circumstances', p: `Outdoor shoots affected by weather are rescheduled at no cost. Neither party is liable for events genuinely outside their control.` },
+    { h: 'Your images and your privacy', p: `We will not use your images publicly without your permission. Tell us at any time and they stay private, including images we have already shared.` }
+  ];
+}
+
+const T = now();
+const CLIENTS = [
+  {
+    id: 'cl1', username: 'sofia.delgado', password: null, tempPassword: 'harbor-4192', passwordSet: false, status: 'Invited',
+    name: 'Sofia Delgado', email: 'sofia.delgado@icloud.com', phone: '(214) 555-0102',
+    session: 'Wedding', shootDate: T + 74 * DAY, venue: 'Arlington Hall',
+    createdAt: T - 9 * DAY,
+    agreements: [{
+      id: 'SA-0512', title: 'Full-day wedding — service agreement', version: '1.0',
+      issuedAt: T - 9 * DAY, status: 'Awaiting signature', signedAt: null, signerName: null, signerIp: null,
+      sections: agreementSections('wedding', 8, 42, 35)
+    }],
+    invoices: [{
+      id: 'INV-2181', kind: 'Retainer', issuedAt: T - 9 * DAY, dueAt: T + 5 * DAY,
+      heldForSignature: true,
+      lineItems: [
+        { desc: 'Wedding photography — 8 hours coverage — 35% retainer', qty: 1, rate: 1470 },
+        { desc: 'Second shooter — 35% retainer', qty: 1, rate: 227 }
+      ],
+      additionalFees: [], payments: [],
+      notes: 'Full-day wedding. Eight hours, two shooters, online gallery, print release. The remaining balance is due before the shoot.'
+    }],
+    galleries: []
+  },
+  {
+    id: 'cl2', username: 'theo.kingsley', password: 'portal1234', tempPassword: null, passwordSet: true, status: 'Active',
+    name: 'Theo Kingsley', email: 'theo.kingsley@outlook.com', phone: '(214) 555-0121',
+    session: 'Engagement', shootDate: T - 21 * DAY, venue: 'White Rock Lake',
+    createdAt: T - 96 * DAY,
+    agreements: [{
+      id: 'SA-0488', title: 'Engagement session — service agreement', version: '1.0',
+      issuedAt: T - 96 * DAY, status: 'Signed', signedAt: T - 94 * DAY,
+      signerName: 'Theo Kingsley', signerIp: '198.51.100.37',
+      sections: agreementSections('engagement session', 2, 14, 50)
+    }],
+    invoices: [
+      {
+        id: 'INV-2164', kind: 'Retainer', issuedAt: T - 94 * DAY, dueAt: T - 87 * DAY,
+        lineItems: [{ desc: 'Engagement session — 2 hours — 50% retainer', qty: 1, rate: 375 }],
+        additionalFees: [], payments: [{ at: T - 92 * DAY, amount: 421, method: 'Card ···· 4242' }],
+        notes: 'Engagement session. Two hours, one location, 60 edited images.'
+      },
+      {
+        id: 'INV-2177', kind: 'Balance', issuedAt: T - 19 * DAY, dueAt: T - 5 * DAY,
+        lineItems: [{ desc: 'Engagement session — balance', qty: 1, rate: 375 }],
+        additionalFees: [{ label: 'Extra location — Deep Ellum', amount: 95 }],
+        payments: [],
+        notes: 'Balance for your engagement session, due before your gallery unlocks.'
+      }
+    ],
+    galleries: [{
+      id: 'g1', name: 'Kingsley — Engagement', count: 68, status: 'Delivered',
+      invoiceId: 'INV-2177', shotAt: T - 21 * DAY, deliveredAt: T - 12 * DAY,
+      items: photos(9, 'g1')
+    }]
+  },
+  {
+    id: 'cl3', username: 'ivy.thornton', password: 'portal1234', tempPassword: null, passwordSet: true, status: 'Active',
+    name: 'Ivy Thornton', email: 'ivy.thornton@gmail.com', phone: '(214) 555-0107',
+    session: 'Family', shootDate: T - 48 * DAY, venue: 'Turtle Creek',
+    createdAt: T - 130 * DAY,
+    agreements: [{
+      id: 'SA-0451', title: 'Family portrait — service agreement', version: '1.0',
+      issuedAt: T - 130 * DAY, status: 'Signed', signedAt: T - 129 * DAY,
+      signerName: 'Ivy Thornton', signerIp: '198.51.100.51',
+      sections: agreementSections('family portrait session', 1, 14, 100)
+    }],
+    invoices: [{
+      id: 'INV-2158', kind: 'Balance', issuedAt: T - 129 * DAY, dueAt: T - 115 * DAY,
+      lineItems: [{ desc: 'Family session — 1 hour', qty: 1, rate: 495 }],
+      additionalFees: [{ label: 'Travel beyond 40 miles', amount: 120 }],
+      payments: [{ at: T - 126 * DAY, amount: 690, method: 'Card ···· 1881' }],
+      notes: 'Family portrait — golden hour. One hour at sunset, 40 edited images.'
+    }],
+    galleries: [{
+      id: 'g2', name: 'Thornton — Family', count: 42, status: 'Delivered',
+      invoiceId: 'INV-2158', shotAt: T - 48 * DAY, deliveredAt: T - 41 * DAY,
+      items: photos(9, 'g2')
+    }]
+  }
+];
+
+/* ---------- money ---------- */
+function totals(inv) {
+  const lines = inv.lineItems.reduce((s, l) => s + l.qty * l.rate, 0);
+  const fees = (inv.additionalFees || []).reduce((s, f) => s + Number(f.amount || 0), 0);
+  const subtotal = lines + fees;
+  const tax = subtotal * STUDIO.taxRate;
+  const processing = (subtotal + tax) * STUDIO.processingPct;
+  const total = subtotal + tax + processing;
+  const paid = (inv.payments || []).reduce((s, p) => s + p.amount, 0);
+  return { subtotal, tax, processing, total, paid, balance: total - paid };
+}
+function statusOf(inv) {
+  const t = totals(inv);
+  if (t.balance <= 0.01) return 'Paid';
+  if (t.paid > 0) return 'Part paid';
+  return now() > inv.dueAt ? 'Overdue' : 'Due';
+}
+const visibleInvoices = c => c.invoices.filter(i => !i.heldForSignature);
+const balanceOf = c => visibleInvoices(c).reduce((s, i) => s + totals(i).balance, 0);
+const pendingAgreement = c => c.agreements.find(a => a.status === 'Awaiting signature');
+const signedAgreement = c => c.agreements.find(a => a.status === 'Signed');
+function galleryUnlocked(c, g) {
+  const inv = c.invoices.find(i => i.id === g.invoiceId);
+  if (!inv) return false;
+  return totals(inv).balance <= 0.01;
+}
+
+/* ============================================================
+   ICONS
+   ============================================================ */
+const I = (n, s = 18) => {
+  const p = {
+    grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+    file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/>',
+    receipt: '<path d="M4 3h16v18l-2.5-1.5L15 21l-2.5-1.5L10 21l-2.5-1.5L5 21H4Z"/><path d="M8 8h8"/><path d="M8 12h6"/>',
+    image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="m21 16-4.5-4.5L7 20"/>',
+    cog: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/>',
+    lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    warn: '<path d="M10.3 3.9 2.5 17.5A2 2 0 0 0 4.2 20.5h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4.5"/><path d="M12 17h.01"/>',
+    checkC: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.2 2.4 2.4 4.6-4.9"/>',
+    check: '<path d="m5 13 4 4L19 7"/>',
+    x: '<path d="M6 6 18 18"/><path d="M18 6 6 18"/>',
+    dl: '<path d="M12 3v12"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/>',
+    coin: '<circle cx="12" cy="12" r="9"/><path d="M12 7v10"/><path d="M14.6 9.4a2.6 2.6 0 0 0-2.6-1.4h-.4a2.2 2.2 0 0 0 0 4.4h.8a2.2 2.2 0 0 1 0 4.4H12a2.6 2.6 0 0 1-2.6-1.4"/>',
+    mail: '<rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="m3 7 8.2 5.5a1.5 1.5 0 0 0 1.6 0L21 7"/>',
+    phone: '<path d="M5 3.5h3.2l1.6 4-2 1.2a12 12 0 0 0 5.5 5.5l1.2-2 4 1.6V17a2 2 0 0 1-2.2 2A15.5 15.5 0 0 1 3 6.7 2 2 0 0 1 5 3.5Z"/>',
+    chevR: '<path d="m9 6 6 6-6 6"/>',
+    chevD: '<path d="m6 9 6 6 6-6"/>',
+    shield: '<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.4 7.5 9.5 4.4-1.1 7.5-4.9 7.5-9.5V6Z"/><path d="m9.2 12 2 2 3.6-3.8"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+    cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/>'
+  }[n] || '';
+  return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const S = { client: null, view: 'home', stage: 'login', pending: null, remember: '7d', error: '' };
+const REMEMBER = [
+  { k: 'none', l: 'Just this once' }, { k: '1d', l: '1 day' },
+  { k: '7d', l: '7 days' }, { k: '30d', l: '30 days' }
+];
+
+/* ============================================================
+   SIGN IN
+   ============================================================ */
+function renderLogin() {
+  const p = S.pending;
+  $('#root').innerHTML = `
+  <div class="lg">
+    <div class="lg-form">
+      <div class="lg-brand">
+        <div class="pt-logo">${STUDIO.logo ? `<img src="${STUDIO.logo}" alt="">` : esc(initials(STUDIO.name))}</div>
+        <div><b>${esc(STUDIO.name)}</b><span>Client portal</span></div>
+      </div>
+      ${S.stage === 'login' ? `
+        <h1>Sign in</h1>
+        <p class="lg-sub">Your agreements, invoices and photographs all live here. Use the username your studio sent you.</p>
+        <label class="lg-l">Username or email</label>
+        <input class="inp" id="lgUser" value="sofia.delgado" autocomplete="username">
+        <label class="lg-l">Password</label>
+        <input class="inp" id="lgPass" type="password" value="harbor-4192" autocomplete="current-password">
+        <p class="lg-tiny">First time here? Use the temporary password ${esc(STUDIO.name)} emailed you.</p>
+        <div class="lg-err">${esc(S.error)}</div>
+        <button class="btn-dark lg-go" data-login>${I('lock', 15)}Sign in</button>
+        <div class="lg-demo">
+          <span>Three demo clients, each at a different point:</span>
+          ${CLIENTS.map(c => `<button data-as="${c.username}">${esc(c.name.split(' ')[0])} — ${
+            !c.passwordSet ? 'brand new, temporary password'
+              : pendingAgreement(c) ? 'agreement to sign'
+                : balanceOf(c) > 0.01 ? 'photos locked, balance owing' : 'everything paid'}</button>`).join('')}
+        </div>`
+      : `
+        <h1>Check your email</h1>
+        <p class="lg-sub">We sent a six-digit code to <b>${esc(p.client.email)}</b>. It expires in ten minutes.</p>
+        <div class="lg-mail">
+          <div class="lg-mail-h">${I('mail', 14)} Inbox — ${esc(p.client.email)}</div>
+          <b>${p.code} is your ${esc(STUDIO.name)} sign-in code</b>
+          <p>Use this code to sign in to your client portal. If this was not you, tell the studio.</p>
+        </div>
+        <label class="lg-l">Verification code</label>
+        <input class="inp lg-code" id="lgCode" inputmode="numeric" maxlength="6" placeholder="000000">
+        <label class="lg-l" style="margin-top:14px">Stay signed in</label>
+        <div class="lg-rem">${REMEMBER.map(o =>
+          `<button class="${S.remember === o.k ? 'is-on' : ''}" data-rem="${o.k}">${o.l}</button>`).join('')}</div>
+        <div class="lg-err">${esc(S.error)}</div>
+        <button class="btn-dark lg-go" data-code>${I('check', 15)}Verify and sign in</button>
+        <button class="lg-back" data-back>Use a different account</button>`}
+      <div class="powered">Powered by <b>${esc(PLATFORM.name)}</b></div>
+    </div>
+    <div class="lg-aside">
+      <h3>${I('shield', 17)} Everything in one place</h3>
+      <ul>
+        <li><b>Read and sign your agreement.</b> Nothing starts until it is signed, and you keep a copy.</li>
+        <li><b>Pay on this site.</b> Card payment happens on the page. You are never sent somewhere else.</li>
+        <li><b>See your photographs.</b> Previews appear as soon as editing finishes. Downloads unlock when your balance clears.</li>
+        <li><b>Keep your details current.</b> Change your name, email, phone or password and the studio sees it immediately.</li>
+      </ul>
+      <p class="lg-note">${esc(STUDIO.name)} · ${esc(STUDIO.email)} · ${esc(STUDIO.phone)}</p>
+    </div>
+  </div>`;
+  setTimeout(() => { const f = $('#lgCode') || $('#lgUser'); if (f) f.focus(); }, 60);
+}
+
+function renderSetPassword() {
+  const c = S.client;
+  $('#root').innerHTML = `
+  <div class="lg">
+    <div class="lg-form">
+      <div class="lg-brand">
+        <div class="pt-logo">${STUDIO.logo ? `<img src="${STUDIO.logo}" alt="">` : esc(initials(STUDIO.name))}</div>
+        <div><b>${esc(STUDIO.name)}</b><span>Client portal</span></div>
+      </div>
+      <h1>Choose a password</h1>
+      <p class="lg-sub">You signed in with the temporary password ${esc(STUDIO.name)} sent you.
+      Pick your own now — the temporary one stops working straight away.</p>
+      <label class="lg-l">New password</label>
+      <input class="inp" id="npw1" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+      <label class="lg-l">Confirm</label>
+      <input class="inp" id="npw2" type="password" autocomplete="new-password">
+      <div class="lg-err">${esc(S.error)}</div>
+      <button class="btn-dark lg-go" data-setpw>${I('lock', 15)}Save and continue</button>
+      <div class="powered">Powered by <b>${esc(PLATFORM.name)}</b></div>
+    </div>
+    <div class="lg-aside">
+      <h3>${I('shield', 17)} Keeping your account yours</h3>
+      <ul>
+        <li><b>Only you know this password.</b> ${esc(STUDIO.name)} cannot see it and neither can we.</li>
+        <li><b>Use something you have not used elsewhere.</b> Eight characters is the minimum; longer is better.</li>
+        <li><b>Locked out?</b> ${esc(STUDIO.name)} can send you fresh credentials at any time.</li>
+      </ul>
+      <p class="lg-note">${esc(STUDIO.name)} · ${esc(STUDIO.email)} · ${esc(STUDIO.phone)}</p>
+    </div>
+  </div>`;
+  setTimeout(() => { const f = $('#npw1'); if (f) f.focus(); }, 60);
+}
+
+function startLogin(user, pass) {
+  const u = String(user || '').trim().toLowerCase();
+  const c = CLIENTS.find(x => x.username === u || x.email.toLowerCase() === u);
+  const ok = c && ((c.passwordSet && c.password === pass) || (!c.passwordSet && c.tempPassword === pass));
+  if (!ok) { S.error = 'That username and password do not match an account.'; return renderLogin(); }
+  if (c.status === 'Suspended') {
+    S.error = `Your access has been paused. Please contact ${STUDIO.name} on ${STUDIO.phone}.`;
+    return renderLogin();
+  }
+  S.error = '';
+  S.pending = { client: c, code: String(100000 + Math.floor(Math.random() * 900000)), at: now() };
+  S.stage = 'code';
+  renderLogin();
+}
+function verify(code) {
+  if (!S.pending) return;
+  if (String(code).trim() !== S.pending.code) { S.error = 'That code is not right.'; return renderLogin(); }
+  S.client = S.pending.client; S.pending = null; S.error = '';
+  S.client.lastLoginAt = now();
+  if (!S.client.passwordSet) { S.stage = 'setpw'; return renderSetPassword(); }
+  S.stage = 'in'; S.view = 'home';
+  draw();
+}
+function signOut() { S.client = null; S.stage = 'login'; S.view = 'home'; renderLogin(); }
+
+/* ============================================================
+   THE PORTAL
+   ============================================================ */
+function draw() {
+  const c = S.client; if (!c) return renderLogin();
+  const invs = visibleInvoices(c).slice().sort((a, b) => b.issuedAt - a.issuedAt);
+  const bal = balanceOf(c);
+  const pend = pendingAgreement(c);
+  const nav = [['home', 'Home', 'grid'], ['agreements', 'Agreements', 'file'],
+    ['invoices', 'Invoices & payments', 'receipt'], ['gallery', 'My photos', 'image'],
+    ['settings', 'My details', 'cog']];
+
+  $('#root').innerHTML = `
+  <div class="pt">
+    <aside class="pt-side">
+      <div class="pt-brand">
+        <div class="pt-logo">${STUDIO.logo ? `<img src="${STUDIO.logo}" alt="">` : esc(initials(STUDIO.name))}</div>
+        <div><b>${esc(STUDIO.name)}</b><span>Client portal</span></div>
+      </div>
+      <nav class="pt-nav">
+        ${nav.map(([k, l, ic]) => `<button class="${S.view === k ? 'is-on' : ''}" data-go="${k}">${I(ic, 17)}<span>${l}</span>
+          ${k === 'agreements' && pend ? '<i class="pt-dot"></i>' : ''}
+          ${k === 'invoices' && bal > 0.01 ? '<i class="pt-dot"></i>' : ''}</button>`).join('')}
+      </nav>
+      <div class="pt-help">
+        <b>Need a hand?</b>
+        <a href="mailto:${esc(STUDIO.email)}">${I('mail', 13)}${esc(STUDIO.email)}</a>
+        <a href="tel:${esc(STUDIO.phone)}">${I('phone', 13)}${esc(STUDIO.phone)}</a>
+      </div>
+      <div class="pt-me">
+        <span class="av" style="background:${['#e08a5f','#5a8dd6','#7f6bd0','#4aa789'][hash(c.name)%4]}">${initials(c.name)}</span>
+        <div><b>${esc(c.name)}</b><span>${esc(c.email)}</span></div>
+      </div>
+      <button class="pt-exit" data-signout>${I('chevR', 14)} Sign out</button>
+      <div class="pt-powered">Powered by ${esc(PLATFORM.name)}</div>
+    </aside>
+    <main class="pt-main"><div class="pt-inner">${views[S.view](c, invs, bal, pend)}</div></main>
+  </div>`;
+}
+
+const ptCard = (ic, t, sub, go) => `<button class="pt-card" data-go="${go}">
+  <span class="pt-card-ic">${I(ic, 18)}</span><b>${t}</b><span>${sub}</span></button>`;
+
+const views = {
+  home(c, invs, bal, pend) {
+    const gals = c.galleries;
+    const unlocked = gals.some(g => galleryUnlocked(c, g));
+    return `
+    <div class="pt-hero">
+      <span class="pt-eyebrow">${esc(STUDIO.name)}</span>
+      <h2>Hello ${esc(c.name.split(' ')[0])}</h2>
+      <p>${esc(c.session)}${c.venue ? ' · ' + esc(c.venue) : ''} · ${fmtD(c.shootDate)}</p>
+    </div>
+    ${pend ? `<div class="pt-alert">${I('warn', 18)}
+      <div><b>Your service agreement is waiting</b>
+        <span>Nothing is confirmed and your date is not held until this is signed. It takes about a minute.</span></div>
+      <button class="btn-dark" data-go="agreements">Read and sign</button></div>` : ''}
+    ${bal > 0.01 ? `<div class="pt-alert ${invs.some(i => statusOf(i) === 'Overdue') ? 'bad' : ''}">${I('receipt', 18)}
+      <div><b>${money(bal)} outstanding</b>
+        <span>Across ${invs.filter(i => totals(i).balance > 0.01).length} ${invs.filter(i => totals(i).balance > 0.01).length === 1 ? 'invoice' : 'invoices'}. Pay by card without leaving this page.</span></div>
+      <button class="btn-dark" data-go="invoices">Pay now</button></div>` : ''}
+    <div class="pt-cards">
+      ${ptCard('file', 'Agreements', pend ? '1 waiting for you' : signedAgreement(c) ? 'Signed' : 'Nothing yet', 'agreements')}
+      ${ptCard('receipt', 'Invoices', bal > 0.01 ? money(bal) + ' due' : invs.length ? 'All paid' : 'Nothing yet', 'invoices')}
+      ${ptCard('image', 'My photos', !gals.length ? 'After the shoot' : unlocked ? 'Ready to download' : 'Preview only', 'gallery')}
+      ${ptCard('cog', 'My details', esc(c.username), 'settings')}
+    </div>
+    <section class="pt-panel">
+      <h3>Where things stand</h3>
+      <ol class="pt-steps">
+        <li class="${signedAgreement(c) ? 'done' : 'now'}"><b>Sign the service agreement</b>
+          <span>Coverage, delivery, cancellation and how your images are licensed.</span></li>
+        <li class="${invs.some(i => totals(i).paid > 0) ? 'done' : signedAgreement(c) ? 'now' : ''}"><b>Pay the retainer</b>
+          <span>Your date is held the moment it clears.</span></li>
+        <li class="${c.galleries.length ? 'done' : c.shootDate < now() ? 'now' : ''}"><b>The shoot</b>
+          <span>${fmtD(c.shootDate)}${c.venue ? ' at ' + esc(c.venue) : ''}. We confirm timings a fortnight before.</span></li>
+        <li class="${unlocked ? 'done' : c.galleries.length ? 'now' : ''}"><b>Your gallery</b>
+          <span>Previews appear here first. Downloads unlock when the balance is settled.</span></li>
+      </ol>
+    </section>`;
+  },
+
+  agreements(c) {
+    return `<h2 class="pt-h">Agreements</h2>
+    ${c.agreements.map(a => `
+      <section class="pt-panel">
+        <div class="pt-agr-h">
+          <div><b>${esc(a.title)}</b><span>${a.id} · version ${a.version} · issued ${fmtD(a.issuedAt)}</span></div>
+          <span class="pill ${a.status === 'Signed' ? 'ok' : 'warn'}">${a.status}</span>
+        </div>
+        <div class="pt-doc">${a.sections.map((s, i) => `<h4>${i + 1}. ${esc(s.h)}</h4><p>${esc(s.p)}</p>`).join('')}</div>
+        ${a.status === 'Signed'
+      ? `<div class="pt-signed">${I('checkC', 17)}
+          <div><b>Signed by ${esc(a.signerName)}</b><span>${fmtDT(a.signedAt)} · recorded from ${esc(a.signerIp)}</span></div>
+          <button class="btn-o" data-savecopy="${a.id}">${I('dl', 15)}Save a copy</button></div>`
+      : `<div class="pt-sign">
+          <label class="lg-l">Type your full name to sign</label>
+          <input class="inp sig" id="sigName" placeholder="${esc(c.name)}">
+          <p class="pt-hint">Typing your name here is a legally binding electronic signature. We record the time and the address it was sent from, and email you a copy.</p>
+          <button class="btn-dark" data-sign="${a.id}">${I('check', 15)}Sign this agreement</button>
+        </div>`}
+      </section>`).join('') || `<section class="pt-panel"><p class="pt-hint">No agreements yet.</p></section>`}`;
+  },
+
+  invoices(c, invs, bal) {
+    const held = c.invoices.filter(i => i.heldForSignature);
+    return `<h2 class="pt-h">Invoices &amp; payments</h2>
+    ${bal > 0.01 ? `<div class="pt-alert"><div><b>${money(bal)} outstanding</b>
+      <span>Payment is taken on this page. You are never sent to another site.</span></div></div>` : ''}
+    ${held.length ? `<div class="pt-alert">${I('lock', 18)}
+      <div><b>${held.length} ${held.length === 1 ? 'invoice is' : 'invoices are'} waiting on your signature</b>
+        <span>They are released as soon as the agreement is signed. Nothing is due before then.</span></div>
+      <button class="btn-dark" data-go="agreements">Sign now</button></div>` : ''}
+    ${invs.map(inv => {
+      const t = totals(inv), st = statusOf(inv);
+      return `<section class="pt-panel">
+        <div class="pt-agr-h">
+          <div><b>${inv.id} · ${esc(inv.kind)}</b><span>Issued ${fmtD(inv.issuedAt)} · due ${fmtD(inv.dueAt)}</span></div>
+          <span class="pill ${st === 'Paid' ? 'ok' : st === 'Overdue' ? 'bad' : 'warn'}">${st}</span>
+        </div>
+        ${inv.notes ? `<p class="pt-notes">${esc(inv.notes)}</p>` : ''}
+        <table class="pt-lines">
+          ${inv.lineItems.map(l => `<tr><td>${esc(l.desc)}</td><td>${l.qty}</td><td>${money(l.qty * l.rate)}</td></tr>`).join('')}
+          ${(inv.additionalFees || []).map(f => `<tr><td>${esc(f.label)} <em>additional fee</em></td><td>1</td><td>${money(f.amount)}</td></tr>`).join('')}
+        </table>
+        <div class="pt-tot">
+          <div><span>Subtotal</span><b>${money(t.subtotal)}</b></div>
+          <div><span>${esc(STUDIO.taxLabel)} (8.25%)</span><b>${money(t.tax)}</b></div>
+          <div><span>Card processing (3%)</span><b>${money(t.processing)}</b></div>
+          <div class="pt-grand"><span>${t.paid && t.balance > 0.01 ? 'Balance' : 'Total'}</span>
+            <b>${money(t.balance > 0.01 ? t.balance : t.total)}</b></div>
+        </div>
+        ${t.balance > 0.01
+        ? `<button class="btn-dark pt-wide" data-pay="${inv.id}">${I('coin', 15)}Pay ${money(t.balance)} by card</button>`
+        : `<div class="pt-signed">${I('checkC', 17)}<div><b>Paid in full</b>
+            <span>${inv.payments.map(p => fmtD(p.at) + ' · ' + esc(p.method) + ' · ' + money(p.amount)).join(' · ')}</span></div>
+            <button class="btn-o" data-receipt="${inv.id}">${I('dl', 15)}Receipt</button></div>`}
+      </section>`;
+    }).join('') || `<section class="pt-panel"><p class="pt-hint">No invoices yet.</p></section>`}`;
+  },
+
+  gallery(c) {
+    if (!c.galleries.length)
+      return `<h2 class="pt-h">My photos</h2>
+        <section class="pt-panel"><div class="pt-empty">${I('image', 30)}
+          <b>Nothing here yet</b>
+          <p>Your gallery appears here once your shoot on ${fmtD(c.shootDate)} has happened and editing is finished.
+          You will get an email the moment it is ready.</p></div></section>`;
+    return `<h2 class="pt-h">My photos</h2>
+    ${c.galleries.map(g => {
+      const open = galleryUnlocked(c, g);
+      const inv = c.invoices.find(i => i.id === g.invoiceId);
+      const owing = inv ? totals(inv).balance : 0;
+      return `<section class="pt-panel">
+        <div class="pt-agr-h">
+          <div><b>${esc(g.name)}</b><span>${g.count} photographs · delivered ${fmtD(g.deliveredAt)}</span></div>
+          <span class="pill ${open ? 'ok' : 'warn'}">${open ? 'Unlocked' : 'Preview only'}</span>
+        </div>
+        ${open ? '' : `<div class="pt-alert" style="margin:0 0 16px">${I('lock', 17)}
+          <div><b>Watermarked until your invoice is settled</b>
+            <span>${owing > 0.01 ? money(owing) + ' outstanding on ' + esc(g.invoiceId) + '.' : 'Awaiting payment.'}
+            Watermarks come off and downloads unlock the moment it clears — nothing else for you to do.</span></div>
+          <button class="btn-dark" data-go="invoices">Pay ${owing > 0.01 ? money(owing) : 'now'}</button></div>`}
+        <div class="pt-grid ${open ? '' : 'locked'}" ${open ? '' : 'oncontextmenu="return false"'}>
+          ${g.items.map(ph => `<figure class="pt-photo" style="--a:${ph.a};--b:${ph.b}">
+            <div class="pt-img" style="transform:rotate(${ph.rot}deg) scale(1.2)"></div>
+            ${open ? `<button class="pt-dl" data-dl="${g.id}" title="Download">${I('dl', 14)}</button>`
+          : `<span class="pt-mark">${esc(STUDIO.name)}</span>`}
+          </figure>`).join('')}
+        </div>
+        ${open
+        ? `<button class="btn-dark pt-wide" data-dlall="${g.id}">${I('dl', 15)}Download all ${g.count} at full resolution</button>`
+        : `<p class="pt-hint" style="margin-top:14px">These previews are low resolution and watermarked. Your full-size,
+           unmarked files are ready and waiting — they release automatically on payment.</p>`}
+      </section>`;
+    }).join('')}`;
+  },
+
+  settings(c) {
+    return `<h2 class="pt-h">My details</h2>
+    <section class="pt-panel">
+      <p class="pt-hint" style="margin:0 0 18px">Anything you change here updates ${esc(STUDIO.name)}'s records straight away.</p>
+      <div class="fr"><label>Full name</label><input class="inp" id="pName" value="${esc(c.name)}"></div>
+      <div class="fr"><label>Email</label><input class="inp" id="pEmail" type="email" value="${esc(c.email)}"></div>
+      <div class="fr"><label>Phone</label><input class="inp" id="pPhone" value="${esc(c.phone)}"></div>
+      <div class="fr"><label>Username</label><input class="inp" id="pUser" value="${esc(c.username)}"></div>
+      <button class="btn-dark" data-saveprofile>${I('check', 15)}Save my details</button>
+    </section>
+    <section class="pt-panel">
+      <h3>Password</h3>
+      <div class="fr"><label>Current password</label><input class="inp" type="password" id="pOld"></div>
+      <div class="fr"><label>New password</label><input class="inp" type="password" id="pNew" placeholder="At least 8 characters"></div>
+      <div class="fr"><label>Confirm</label><input class="inp" type="password" id="pNew2"></div>
+      <button class="btn-o" data-savepw>${I('lock', 15)}Change password</button>
+    </section>
+    <section class="pt-panel">
+      <h3>Your studio</h3>
+      <dl class="kv">
+        <dt>Studio</dt><dd>${esc(STUDIO.name)}</dd>
+        <dt>Email</dt><dd>${esc(STUDIO.email)}</dd>
+        <dt>Phone</dt><dd>${esc(STUDIO.phone)}</dd>
+        <dt>Address</dt><dd>${esc(STUDIO.address)}</dd>
+        <dt>Client since</dt><dd>${fmtD(c.createdAt)}</dd>
+      </dl>
+    </section>`;
+  }
+};
+
+/* ============================================================
+   PAYMENT — taken on this page, never a redirect
+   ============================================================ */
+function openPayment(id) {
+  const c = S.client, inv = c.invoices.find(i => i.id === id);
+  const t = totals(inv);
+  $('#modal').innerHTML = `
+    <div class="mo-bg" data-close></div>
+    <div class="mo">
+      <div class="mo-h"><b>Pay ${inv.id}</b><button class="mo-x" data-close>${I('x', 16)}</button></div>
+      <div class="mo-b">
+        <div class="pay-sum">
+          <div><span>${esc(inv.kind)}</span><b>${money(t.subtotal)}</b></div>
+          <div><span>${esc(STUDIO.taxLabel)}</span><b>${money(t.tax)}</b></div>
+          <div><span>Card processing 3%</span><b>${money(t.processing)}</b></div>
+          <div class="pay-grand"><span>Amount due</span><b>${money(t.balance)}</b></div>
+        </div>
+        <label class="lg-l">Card number</label>
+        <input class="inp" id="pcNum" inputmode="numeric" placeholder="4242 4242 4242 4242" maxlength="19" autocomplete="cc-number">
+        <div class="pay-row">
+          <div><label class="lg-l">Expiry</label><input class="inp" id="pcExp" placeholder="MM / YY" maxlength="7"></div>
+          <div><label class="lg-l">CVC</label><input class="inp" id="pcCvc" inputmode="numeric" placeholder="123" maxlength="4"></div>
+          <div><label class="lg-l">Postcode</label><input class="inp" id="pcZip" placeholder="75206" maxlength="10"></div>
+        </div>
+        <label class="lg-l">Name on card</label>
+        <input class="inp" id="pcName" value="${esc(c.name)}">
+        <div class="lg-err" id="pcErr"></div>
+        <p class="pay-note">${I('lock', 13)} Your card details go straight to Stripe from this page and never touch
+        ${esc(STUDIO.name)}'s systems. You stay on this site the whole time.</p>
+      </div>
+      <div class="mo-f"><button class="btn-o" data-close>Cancel</button>
+        <button class="btn-dark" data-dopay="${inv.id}">${I('lock', 15)}Pay ${money(t.balance)}</button></div>
+    </div>`;
+  $('#modal').classList.add('on');
+  const num = $('#pcNum');
+  num.oninput = () => { num.value = num.value.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim(); };
+  const exp = $('#pcExp');
+  exp.oninput = () => {
+    const v = exp.value.replace(/\D/g, '').slice(0, 4);
+    exp.value = v.length > 2 ? v.slice(0, 2) + ' / ' + v.slice(2) : v;
+  };
+  setTimeout(() => num.focus(), 60);
+}
+const closeModal = () => $('#modal').classList.remove('on');
+
+function pay(id) {
+  const num = $('#pcNum').value.replace(/\s/g, '');
+  const exp = $('#pcExp').value.replace(/\D/g, '');
+  const cvc = $('#pcCvc').value;
+  const err = $('#pcErr');
+  if (num.length < 15) { err.textContent = 'That card number is not complete.'; return; }
+  if (exp.length < 4) { err.textContent = 'Add the expiry date.'; return; }
+  if (+exp.slice(0, 2) < 1 || +exp.slice(0, 2) > 12) { err.textContent = 'That expiry month is not valid.'; return; }
+  if (cvc.length < 3) { err.textContent = 'Add the security code.'; return; }
+
+  const c = S.client, inv = c.invoices.find(i => i.id === id);
+  const t = totals(inv);
+  inv.payments.push({ at: now(), amount: t.balance, method: 'Card ···· ' + num.slice(-4) });
+  closeModal();
+  const g = c.galleries.find(x => x.invoiceId === id);
+  toast(g && galleryUnlocked(c, g)
+    ? 'Payment received. Your photographs are unlocked.'
+    : 'Payment received. Thank you.');
+  draw();
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+let tT;
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tT); tT = setTimeout(() => t.classList.remove('on'), 3000); }
+
+/* ============================================================
+   EVENTS
+   ============================================================ */
+document.addEventListener('click', e => {
+  const h = s => e.target.closest(s); let x;
+
+  if (h('[data-login]')) return startLogin($('#lgUser').value, $('#lgPass').value);
+  if ((x = h('[data-as]'))) {
+    const c = CLIENTS.find(y => y.username === x.dataset.as);
+    const pw = c.passwordSet ? c.password : c.tempPassword;
+    $('#lgUser').value = c.username; $('#lgPass').value = pw;
+    return startLogin(c.username, pw);
+  }
+  if ((x = h('[data-rem]'))) { S.remember = x.dataset.rem; return renderLogin(); }
+  if (h('[data-code]')) return verify($('#lgCode').value);
+  if (h('[data-back]')) { S.stage = 'login'; S.pending = null; S.error = ''; return renderLogin(); }
+  if (h('[data-setpw]')) {
+    const a = $('#npw1').value, b2 = $('#npw2').value;
+    if (a.length < 8) { S.error = 'Use at least eight characters.'; return renderSetPassword(); }
+    if (a !== b2) { S.error = 'Those two do not match.'; return renderSetPassword(); }
+    S.client.password = a; S.client.passwordSet = true; S.client.tempPassword = null;
+    S.client.status = 'Active'; S.error = ''; S.stage = 'in'; S.view = 'home';
+    draw(); return toast('Password saved. Welcome in.');
+  }
+  if (h('[data-signout]')) return signOut();
+
+  if (h('[data-close]')) return closeModal();
+  if ((x = h('[data-go]'))) { S.view = x.dataset.go; return draw(); }
+
+  if ((x = h('[data-sign]'))) {
+    const nm = ($('#sigName').value || '').trim();
+    if (nm.length < 3) return toast('Type your full name to sign.');
+    const a = S.client.agreements.find(y => y.id === x.dataset.sign);
+    a.status = 'Signed'; a.signedAt = now(); a.signerName = nm;
+    a.signerIp = '198.51.100.' + (20 + (hash(nm) % 60));
+    S.client.invoices.forEach(i => { i.heldForSignature = false; });
+    toast('Signed. Your studio has been told, and anything held back has been released.');
+    return draw();
+  }
+  if ((x = h('[data-pay]'))) return openPayment(x.dataset.pay);
+  if ((x = h('[data-dopay]'))) return pay(x.dataset.dopay);
+  if (h('[data-dl]') || h('[data-dlall]')) return toast('Download started.');
+  if (h('[data-receipt]') || h('[data-savecopy]')) return toast('A PDF copy has been emailed to you.');
+
+  if (h('[data-saveprofile]')) {
+    const c = S.client;
+    const em = $('#pEmail').value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return toast('That email address does not look right.');
+    c.name = $('#pName').value.trim() || c.name;
+    c.email = em;
+    c.phone = $('#pPhone').value.trim() || c.phone;
+    const u = $('#pUser').value.trim().toLowerCase();
+    if (u && u !== c.username) {
+      if (CLIENTS.some(o => o !== c && o.username === u)) return toast('That username is taken.');
+      c.username = u;
+    }
+    toast('Saved. Your studio can see the change already.');
+    return draw();
+  }
+  if (h('[data-savepw]')) {
+    const c = S.client;
+    if ($('#pOld').value !== c.password) return toast('That is not your current password.');
+    const a = $('#pNew').value, b = $('#pNew2').value;
+    if (a.length < 8) return toast('Use at least eight characters.');
+    if (a !== b) return toast('Those two do not match.');
+    c.password = a;
+    toast('Password changed.');
+    return draw();
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key !== 'Enter') return;
+  if (e.target.id === 'lgPass' || e.target.id === 'lgUser') startLogin($('#lgUser').value, $('#lgPass').value);
+  if (e.target.id === 'lgCode') verify(e.target.value);
+});
+
+renderLogin();
+</script>
+</body>
+</html>
